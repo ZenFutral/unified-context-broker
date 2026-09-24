@@ -40,15 +40,15 @@ Provides real-time visibility into token budget savings, active provider statuse
 ## Installation & Setup
 
 ### From Open VSX Registry (VSCodium, Eclipse Theia, Antigravity IDE)
-Search for `Context Broker MCP Companion` in the Extensions view, or install via command line:
+Search for `Unified Context Broker MCP Companion` in the Extensions view, or install via command line:
 ```bash
-ovsx get context-broker.context-broker-vscode
+ovsx get unified-context-broker.unified-context-broker
 ```
 
 ### Manual Installation (.vsix)
 Download the latest `.vsix` from the [GitHub Releases](https://github.com/ZenFutral/unified-context-broker/releases) page and run:
 ```bash
-code --install-extension context-broker-vscode-0.1.0.vsix
+code --install-extension unified-context-broker-0.1.0.vsix
 ```
 
 ## Requirements

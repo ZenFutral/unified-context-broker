@@ -18,7 +18,7 @@
     "test:watch": "vitest --workspace vitest.workspace.ts",
     "typecheck": "turbo run build",
     "lint": "turbo run build",
-    "package:extension": "pnpm --filter context-broker-vscode run package",
+    "package:extension": "pnpm --filter unified-context-broker run package",
     "clean": "turbo run clean && rimraf node_modules"
   },
   "devDependencies": {

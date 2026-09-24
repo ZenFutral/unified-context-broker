@@ -52,8 +52,8 @@ The Open VSX Registry powers open-source VS Code distributions like **VSCodium**
 
 ### Step 2: Create a Namespace
 1. In Open VSX, publisher names are called **namespaces**.
-2. If using the default namespace in `package.json` (`context-broker`):
-   - Claim or request the `context-broker` namespace via your Open VSX account settings (or change `"publisher": "<your-namespace>"` in [apps/vscode-extension/package.json](file:///apps/vscode-extension/package.json) to match an existing namespace you own).
+2. If using the default namespace in `package.json` (`unified-context-broker`):
+   - Claim or request the `unified-context-broker` namespace via your Open VSX account settings (or change `"publisher": "<your-namespace>"` in [apps/vscode-extension/package.json](file:///apps/vscode-extension/package.json) to match an existing namespace you own).
 3. You can also create a namespace via CLI:
    ```bash
    npx ovsx create-namespace <your-namespace> -p <YOUR_OVSX_TOKEN>
@@ -62,7 +62,7 @@ The Open VSX Registry powers open-source VS Code distributions like **VSCodium**
 ### Step 3: Generate an Access Token (PAT)
 1. Go to your Open VSX profile settings: [open-vsx.org/user-settings/tokens](https://open-vsx.org/user-settings/tokens).
 2. Click **Generate New Token**.
-3. Name it (e.g., `context-broker-ci`).
+3. Name it (e.g., `unified-context-broker-ci`).
 4. Copy the generated token.
 
 ### Step 4: Option A — Publish Locally via CLI
@@ -75,7 +75,7 @@ cd apps/vscode-extension
 npx @vscode/vsce package --no-dependencies
 
 # 2. Publish to Open VSX
-npx ovsx publish context-broker-vscode-0.1.0.vsix -p <YOUR_OVSX_TOKEN>
+npx ovsx publish unified-context-broker-0.1.0.vsix -p <YOUR_OVSX_TOKEN>
 ```
 
 ### Step 5: Option B — Automated GitHub Actions CI/CD (Recommended)

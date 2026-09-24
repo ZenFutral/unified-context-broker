@@ -24,7 +24,7 @@ Write-Host "`n  === Packaging Context Broker VS Code Companion ===`n" -Foregroun
 # 1. Build extension
 Set-Location $ProjectRoot
 Write-Host "Building extension..." -ForegroundColor Gray
-& pnpm --filter context-broker-vscode run build
+& pnpm --filter unified-context-broker run build
 if ($LASTEXITCODE -ne 0) {
   Write-Host "[X] Build failed." -ForegroundColor Red
   exit 1
@@ -33,20 +33,20 @@ if ($LASTEXITCODE -ne 0) {
 # 2. Package .vsix
 Set-Location $ExtDir
 Write-Host "Packaging .vsix with vsce..." -ForegroundColor Gray
-& npx --yes @vscode/vsce package --no-dependencies --out context-broker-vscode.vsix
+& npx --yes @vscode/vsce package --no-dependencies --out unified-context-broker.vsix
 if ($LASTEXITCODE -ne 0) {
   Write-Host "[X] Packaging failed." -ForegroundColor Red
   exit 1
 }
 
-$VsixFile = Join-Path $ExtDir "context-broker-vscode.vsix"
+$VsixFile = Join-Path $ExtDir "unified-context-broker.vsix"
 if (-not (Test-Path $VsixFile)) {
   Write-Host "[X] .vsix file not generated." -ForegroundColor Red
   exit 1
 }
 
 $VsixSize = (Get-Item $VsixFile).Length / 1KB
-Write-Host "[OK] Packaged: context-broker-vscode.vsix ($([Math]::Round($VsixSize, 2)) KB)" -ForegroundColor Green
+Write-Host "[OK] Packaged: unified-context-broker.vsix ($([Math]::Round($VsixSize, 2)) KB)" -ForegroundColor Green
 
 if ($DryRun) {
   Write-Host "`n[DryRun] Skipping publish step. File ready at: $VsixFile" -ForegroundColor Yellow
@@ -63,7 +63,7 @@ if (-not $Pat) {
 }
 
 Write-Host "Publishing to Open VSX registry..." -ForegroundColor Cyan
-& npx --yes ovsx publish context-broker-vscode.vsix -p $Pat
+& npx --yes ovsx publish unified-context-broker.vsix -p $Pat
 if ($LASTEXITCODE -eq 0) {
   Write-Host "`n[OK] Successfully published to Open VSX!" -ForegroundColor Green
 } else {

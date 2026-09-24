@@ -45,8 +45,8 @@ jobs:
       - name: Package extension (.vsix)
         working-directory: apps/vscode-extension
         run: |
-          npx @vscode/vsce package --no-dependencies --out context-broker-vscode.vsix
-          ls -lh context-broker-vscode.vsix
+          npx @vscode/vsce package --no-dependencies --out unified-context-broker.vsix
+          ls -lh unified-context-broker.vsix
 
       - name: Publish to Open VSX Registry
         if: ${{ github.event.inputs.dry_run != 'true' && env.OVSX_PAT != '' }}
@@ -54,7 +54,7 @@ jobs:
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
         run: |
-          npx ovsx publish context-broker-vscode.vsix --pat "$OVSX_PAT"
+          npx ovsx publish unified-context-broker.vsix --pat "$OVSX_PAT"
 
       - name: Publish to VS Code Marketplace (Optional)
         if: ${{ github.event.inputs.dry_run != 'true' && env.VSCE_PAT != '' }}
@@ -62,11 +62,11 @@ jobs:
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: |
-          npx @vscode/vsce publish --packagePath context-broker-vscode.vsix --pat "$VSCE_PAT"
+          npx @vscode/vsce publish --packagePath unified-context-broker.vsix --pat "$VSCE_PAT"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/v')
         with:
-          files: apps/vscode-extension/context-broker-vscode.vsix
+          files: apps/vscode-extension/unified-context-broker.vsix
           generate_release_notes: true
