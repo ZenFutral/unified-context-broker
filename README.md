@@ -122,15 +122,100 @@ You can initialize Context Broker and auto-populate `context-broker.md` into any
 * **Claude Desktop:** Copy snippet from [`mcp-client-config.json`](file:///c:/Users/ZenFutral/OneDrive%20-%20Platform%20Accounting%20Group-Subs/Documents/ContextMCP/context-broker/mcp-client-config.json) to `%APPDATA%\Claude\claude_desktop_config.json`.
 * **Generic CLI / Stdio Host:** Run `start-broker.ps1` or `start-broker.cmd` directly.
 
-## Completed Milestones (1 - 6)
+Viewed README.md:1-145
 
-- **Milestone 1: Core Foundation & comP Adapter** — Monorepo setup, canonical typed contracts (`packages/contracts`), comP adapter (`adapters/comp`), dynamic registry, and MCP server shell.
-- **Milestone 2: CodeGraphContext Adapter & Structural Intelligence** — Graph adapter (`adapters/codegraphcontext`), neighborhood expansion (`GraphExpansionEngine`), and structural MCP tools (`get_symbol_context`, `get_impact_context`, `get_repository_map`).
-- **Milestone 3: Vector Adapter, Staged Rank Fusion & Token Budget Packing** — Local vector adapter (`adapters/vector`), spatial deduplicator (`SpatialDeduplicator`), rank fusion (`RankFusionEngine`), and hybrid search pipeline.
-- **Milestone 4: Git & Memory Adapters, Provenance & Freshness** — Git adapter (`adapters/git`), durable memory adapter (`adapters/memory`), provenance layer (`packages/provenance`), and full 8-tool MCP surface.
-- **Milestone 5: Security Layer & Verification Swarm Harness** — Workspace boundary guard (`WorkspaceBoundaryGuard`), regex secret scrubber (`SecretScrubber`), permission validator, and 4-agent verification swarm (`tests/`).
-- **Milestone 6: Upstream Maintenance Automation, Patch Ledger & Packaging** — Patch ledger governance linter, automated compatibility harness, Dockerfile containerization, CLI binary wrapper, and VS Code extension client.
+Here is the expanded **Feature Set Outline** structured by functional capability domains:
 
+---
+
+# Unified Context Broker: Feature Set Outline
+
+### 1. Multi-Provider Hybrid Retrieval Engine
+* **Lexical & Documentation Search ([`adapters/comp`](file:///c:/Users/ZenFutral/OneDrive%20-%20Platform%20Accounting%20Group-Subs/Documents/context-broker/adapters/comp)):**
+  * Fast BM25 keyword matching across codebase files and documentation.
+  * Markdown and documentation chunking with header-aware context extraction.
+* **Semantic Vector Search ([`adapters/vector`](file:///c:/Users/ZenFutral/OneDrive%20-%20Platform%20Accounting%20Group-Subs/Documents/context-broker/adapters/vector)):**
+  * Local embedding-based vector similarity search (LanceDB / ONNX) for natural language queries.
+  * Semantic concept discovery for intent-based code search without exact keyword matches.
+* **Query Classification & Execution Planning ([`packages/orchestrator`](file:///c:/Users/ZenFutral/OneDrive%20-%20Platform%20Accounting%20Group-Subs/Documents/context-broker/packages/orchestrator)):**
+  * Automatic query intent classification (symbol lookup, architectural query, conceptual search).
+  * Concurrent multi-adapter retrieval execution with per-provider timeouts and isolated error boundaries for graceful degradation.
+
+---
+
+### 2. Structural Code Intelligence & Graph Analysis
+* **Symbol & AST Resolution ([`adapters/codegraphcontext`](file:///c:/Users/ZenFutral/OneDrive%20-%20Platform%20Accounting%20Group-Subs/Documents/context-broker/adapters/codegraphcontext)):**
+  * Precise symbol definition, type signature, and docstring resolution.
+  * Hierarchical caller/callee trees and cross-file reference tracking.
+* **Graph Neighborhood Expansion:**
+  * Contextual neighborhood traversal using distance decay scoring ($1 / (1 + \alpha \cdot d)$) to include relevant call-chain neighbors.
+* **Impact & Blast Radius Analysis:**
+  * Upstream and downstream dependency mapping to analyze the blast radius of changes to symbols or files.
+* **Repository Architecture Mapping:**
+  * High-level codebase structure, module boundaries, and entry-point topology synthesis.
+
+---
+
+### 3. Intelligent Ranking, Deduplication & Budget Packing
+* **Spatial Candidate Deduplication ([`packages/ranking`](file:///c:/Users/ZenFutral/OneDrive%20-%20Platform%20Accounting%20Group-Subs/Documents/context-broker/packages/ranking)):**
+  * Overlapping line-range merging and containment suppression to prevent duplicate token consumption.
+* **Staged Rank Fusion:**
+  * Multi-source hybrid ranking using Reciprocal Rank Fusion (RRF) and Weighted Linear Scoring (combining BM25, vector similarity, graph proximity, and recency).
+* **Token Budget Knapsack Packing:**
+  * Greedy knapsack packing algorithm that strictly honors client token limits while maximizing context density.
+
+---
+
+### 4. Security, Isolation & Access Governance
+* **Workspace Boundary Guard ([`packages/security`](file:///c:/Users/ZenFutral/OneDrive%20-%20Platform%20Accounting%20Group-Subs/Documents/context-broker/packages/security)):**
+  * Path jail enforcement and symlink verification to prevent directory traversal and unauthorized file access.
+* **Real-time Secret Scrubber:**
+  * Regex-based automatic detection and redaction of API keys, bearer tokens, passwords, and private PEM certificates from emitted context.
+* **Permission & RBAC Scope Validation:**
+  * Strict distinction between read-only inspection tools and state-mutating operations.
+  * Configurable exclusion rules via [exclusions.json](file:///c:/Users/ZenFutral/OneDrive%20-%20Platform%20Accounting%20Group-Subs/Documents/context-broker/config/policies/exclusions.json).
+
+---
+
+### 5. Provenance, Freshness & Explainability
+* **Git Recency & Diff Awareness ([`adapters/git`](file:///c:/Users/ZenFutral/OneDrive%20-%20Platform%20Accounting%20Group-Subs/Documents/context-broker/adapters/git)):**
+  * Freshness scoring factoring in commit history, active working tree diffs, and file churn.
+* **Cryptographic Source Grounding ([`packages/provenance`](file:///c:/Users/ZenFutral/OneDrive%20-%20Platform%20Accounting%20Group-Subs/Documents/context-broker/packages/provenance)):**
+  * SHA-256 chunk fingerprinting for verifiable context origin.
+  * IDE-clickable citation generation (`file:///path#Lstart-Lend`).
+* **Score Explainer Engine:**
+  * Transparent telemetry revealing exact score breakdowns (BM25, vector, graph distance, recency) behind ranked results.
+
+---
+
+### 6. Durable Architectural Memory
+* **Decision Tracking (ADRs) ([`adapters/memory`](file:///c:/Users/ZenFutral/OneDrive%20-%20Platform%20Accounting%20Group-Subs/Documents/context-broker/adapters/memory)):**
+  * Persistent storage and semantic recall of Architectural Decision Records, historical constraints, and technical rationale.
+  * Structured recording of new decisions during agent workflows.
+
+---
+
+### 7. Unified Protocol & Client Integration Surface
+* **The 8 Unified MCP Tools:**
+  * Retrieval: `search_context`, `get_symbol_context`, `get_impact_context`, `get_repository_map`.
+  * Memory: `recall_decisions`, `record_decision`.
+  * Telemetry & Inspection: `explain_context`, `backend_health`.
+* **Client Ecosystem Support:**
+  * **AntiGravity IDE:** Native rule injection (`.agents/rules/context-broker.md`) prioritizing broker tools over brute-force file reads.
+  * **VS Code Companion Extension ([`apps/vscode-extension`](file:///c:/Users/ZenFutral/OneDrive%20-%20Platform%20Accounting%20Group-Subs/Documents/context-broker/apps/vscode-extension)):** One-click workspace initialization, status bar health monitor, and Command Palette actions.
+  * **Broad MCP Support:** Compatibility with Cursor AI, Claude Desktop, Continue, Cline, and stdio/SSE hosts.
+* **Codebase Scaffolding & CLI:**
+  * `init` command, PowerShell, and npx scripts to scaffold policies and rules into any target workspace.
+
+---
+
+### 8. Governance, Containerization & Verification Swarm
+* **Upstream Patch Governance ([`upstream/`](file:///c:/Users/ZenFutral/OneDrive%20-%20Platform%20Accounting%20Group-Subs/Documents/context-broker/upstream)):**
+  * Upstream manifest tracking with automated patch ledger validation linter.
+* **4-Agent Verification Swarm ([`tests/`](file:///c:/Users/ZenFutral/OneDrive%20-%20Platform%20Accounting%20Group-Subs/Documents/context-broker/tests)):**
+  * Automated suites for contract compliance, 8-case golden retrieval benchmarks, security penetration attacks, and chaos failure injection.
+* **Packaging & Containerization:**
+  * Standalone CLI binary, Dockerfile deployment, and automated CI/CD marketplace publishing.
 ---
 
 ## CI/CD & Publishing

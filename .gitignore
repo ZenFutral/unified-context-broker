@@ -38,3 +38,6 @@ yarn-error.log*
 # Operating System files
 .DS_Store
 Thumbs.db
+
+# Agent Instructions
+.agents/

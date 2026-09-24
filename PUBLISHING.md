@@ -34,7 +34,7 @@ git add .
 git commit -m "feat: initial commit of Unified Context Broker monorepo and VS Code companion"
 
 # Link to your remote GitHub repository (replace with your GitHub username)
-git remote add origin https://github.com/zenfutral/context-broker.git
+git remote add origin https://github.com/ZenFutral/unified-context-broker.git
 
 # Push to main
 git push -u origin main

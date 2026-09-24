@@ -6,11 +6,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/zenfutral/context-broker.git"
+    "url": "https://github.com/ZenFutral/unified-context-broker.git"
   },
-  "homepage": "https://github.com/zenfutral/context-broker#readme",
+  "homepage": "https://github.com/ZenFutral/unified-context-broker#readme",
   "bugs": {
-    "url": "https://github.com/zenfutral/context-broker/issues"
+    "url": "https://github.com/ZenFutral/unified-context-broker/issues"
   },
   "scripts": {
     "build": "turbo run build",

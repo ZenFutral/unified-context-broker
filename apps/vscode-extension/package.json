@@ -7,13 +7,13 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/zenfutral/context-broker.git",
+    "url": "https://github.com/ZenFutral/unified-context-broker.git",
     "directory": "apps/vscode-extension"
   },
   "bugs": {
-    "url": "https://github.com/zenfutral/context-broker/issues"
+    "url": "https://github.com/ZenFutral/unified-context-broker/issues"
   },
-  "homepage": "https://github.com/zenfutral/context-broker/tree/main/apps/vscode-extension#readme",
+  "homepage": "https://github.com/ZenFutral/unified-context-broker/tree/main/apps/vscode-extension#readme",
   "icon": "resources/icon.png",
   "engines": {
     "vscode": "^1.85.0"

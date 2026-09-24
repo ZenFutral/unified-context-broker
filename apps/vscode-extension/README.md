@@ -46,7 +46,7 @@ ovsx get context-broker.context-broker-vscode
 ```
 
 ### Manual Installation (.vsix)
-Download the latest `.vsix` from the [GitHub Releases](https://github.com/zenfutral/context-broker/releases) page and run:
+Download the latest `.vsix` from the [GitHub Releases](https://github.com/ZenFutral/unified-context-broker/releases) page and run:
 ```bash
 code --install-extension context-broker-vscode-0.1.0.vsix
 ```
