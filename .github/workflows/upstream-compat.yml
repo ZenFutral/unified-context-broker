@@ -1,0 +1,43 @@
+name: Upstream Compatibility & Release Check
+
+on:
+  schedule:
+    - cron: '0 6 * * 1' # Runs weekly on Mondays at 06:00 UTC
+  workflow_dispatch:
+
+jobs:
+  audit-upstreams:
+    name: Audit Upstream Dependencies
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out broker repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate Patch Ledger Compliance
+        run: pnpm vitest run upstream/tests/patch-governance.test.ts
+
+      - name: Run Provider Contract Suite
+        run: pnpm vitest run tests/contract/
+
+      - name: Run Retrieval Evaluation Benchmarks
+        run: pnpm vitest run tests/retrieval/
+
+      - name: Run Security & Sandbox Tests
+        run: pnpm vitest run tests/security/
+
+      - name: Run Chaos & Failure Tests
+        run: pnpm vitest run tests/failure/

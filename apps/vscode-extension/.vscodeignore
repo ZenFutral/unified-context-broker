@@ -1,0 +1,11 @@
+.vscode/**
+.turbo/**
+src/**
+tests/**
+tsconfig*.json
+tsconfig.tsbuildinfo
+node_modules/**
+*.vsix
+**/*.map
+.DS_Store
+Thumbs.db

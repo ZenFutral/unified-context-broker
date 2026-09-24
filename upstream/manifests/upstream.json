@@ -1,0 +1,44 @@
+{
+  "trackedUpstreams": [
+    {
+      "name": "comp",
+      "repository": "https://github.com/upstream/comp",
+      "version": "0.4.2",
+      "commit": "8f3b2a1c",
+      "license": "Apache-2.0",
+      "interfaces": ["cli", "sqlite-bm25", "rust-daemon"],
+      "lastAudited": "2026-09-24",
+      "capabilities": [
+        "lexical_search",
+        "document_extraction",
+        "workspace_monitoring"
+      ]
+    },
+    {
+      "name": "codegraphcontext",
+      "repository": "https://github.com/upstream/codegraphcontext",
+      "version": "0.8.2",
+      "commit": "4f1a9b2e",
+      "license": "MIT",
+      "interfaces": ["http", "cli", "mcp"],
+      "lastAudited": "2026-09-24",
+      "capabilities": [
+        "symbol_resolution",
+        "call_graph_traversal",
+        "impact_analysis"
+      ]
+    },
+    {
+      "name": "vectordb",
+      "repository": "https://github.com/lancedb/lancedb",
+      "version": "0.6.0",
+      "license": "Apache-2.0",
+      "interfaces": ["embedded-native"],
+      "lastAudited": "2026-09-24",
+      "capabilities": [
+        "dense_vector_search",
+        "zero_network_embeddings"
+      ]
+    }
+  ]
+}

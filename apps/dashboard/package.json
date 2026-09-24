@@ -1,0 +1,26 @@
+{
+  "name": "@context-broker/dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Interactive Web Monitoring & Context Sandbox Dashboard",
+  "type": "module",
+  "main": "./dist/server.js",
+  "scripts": {
+    "build": "tsc -b",
+    "start": "node ./dist/server.js",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@context-broker/contracts": "workspace:*",
+    "@context-broker/orchestrator": "workspace:*",
+    "@context-broker/adapter-comp": "workspace:*",
+    "@context-broker/adapter-codegraphcontext": "workspace:*",
+    "@context-broker/adapter-vector": "workspace:*",
+    "@context-broker/adapter-git": "workspace:*",
+    "@context-broker/adapter-memory": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.4.0"
+  }
+}

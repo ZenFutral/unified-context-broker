@@ -1,0 +1,19 @@
+{
+  "secretScrubbingPatterns": [
+    "(?:bearer\\s+|token\\s+|api[_-]?key\\s*[:=]\\s*['\"])(\\w{20,})",
+    "(?:password\\s*[:=]\\s*['\"])([^'\"]+)",
+    "-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----"
+  ],
+  "pathExclusions": [
+    "**/.env*",
+    "**/*.pem",
+    "**/*.key",
+    "**/*.p12",
+    "**/id_rsa*",
+    "**/id_ed25519*",
+    "**/node_modules/**",
+    "**/.git/**",
+    "**/dist/**",
+    "**/build/**"
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "serverName": "context-broker-mcp",
+  "serverVersion": "0.1.0",
+  "defaultTokenBudget": 4000,
+  "maxTokenBudget": 32000,
+  "defaultResultLimit": 25,
+  "adapters": {
+    "comp": {
+      "enabled": true,
+      "timeoutMs": 2000
+    },
+    "codegraphcontext": {
+      "enabled": true,
+      "timeoutMs": 2000
+    },
+    "vector": {
+      "enabled": true,
+      "timeoutMs": 3000
+    },
+    "git": {
+      "enabled": true,
+      "timeoutMs": 1500
+    },
+    "memory": {
+      "enabled": true,
+      "timeoutMs": 1500
+    }
+  },
+  "scoring": {
+    "lexicalWeight": 0.30,
+    "semanticWeight": 0.35,
+    "graphWeight": 0.20,
+    "recencyWeight": 0.10,
+    "pathPriorityWeight": 0.05,
+    "intentMatchBoost": 0.15,
+    "stalePenalty": 0.25,
+    "duplicatePenalty": 0.10
+  },
+  "security": {
+    "enablePathTraversalCheck": true,
+    "enableSecretScrubbing": true,
+    "excludedPatterns": [
+      "**/.env*",
+      "**/*.pem",
+      "**/*.key",
+      "**/id_rsa*",
+      "**/node_modules/**",
+      "**/.git/**"
+    ]
+  }
+}

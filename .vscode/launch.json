@@ -1,0 +1,18 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run Context Broker Extension (VS Code Host)",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/context-broker/apps/vscode-extension"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/context-broker/apps/vscode-extension/dist/**/*.js"
+      ],
+      "preLaunchTask": "npm: build-extension"
+    }
+  ]
+}

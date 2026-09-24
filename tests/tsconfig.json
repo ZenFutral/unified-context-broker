@@ -1,0 +1,18 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true,
+    "resolveJsonModule": true
+  },
+  "include": ["**/*.ts", "**/*.json"],
+  "references": [
+    { "path": "../packages/contracts" },
+    { "path": "../packages/orchestrator" },
+    { "path": "../adapters/comp" },
+    { "path": "../adapters/codegraphcontext" },
+    { "path": "../adapters/vector" },
+    { "path": "../adapters/git" },
+    { "path": "../adapters/memory" }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "name": "@context-broker/integration-tests",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Integration, security, chaos, and benchmark test suites for the Context Broker",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@context-broker/contracts": "workspace:*",
+    "@context-broker/orchestrator": "workspace:*",
+    "@context-broker/adapter-comp": "workspace:*",
+    "@context-broker/adapter-codegraphcontext": "workspace:*",
+    "@context-broker/adapter-vector": "workspace:*",
+    "@context-broker/adapter-git": "workspace:*",
+    "@context-broker/adapter-memory": "workspace:*",
+    "@types/node": "^20.11.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.4.0"
+  }
+}

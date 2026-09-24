@@ -1,0 +1,69 @@
+[
+  {
+    "id": "TC-01",
+    "name": "Exact Symbol Lookup",
+    "query": "extractCallRecordId",
+    "intent": "exact_lookup",
+    "expectedTopSymbol": "extractCallRecordId",
+    "expectedSourceBackend": "codegraphcontext",
+    "maxRank": 1
+  },
+  {
+    "id": "TC-02",
+    "name": "Concept Discovery",
+    "query": "audio streaming buffer synchronization and jitter correction",
+    "intent": "semantic_discovery",
+    "expectedTopFile": "src/services/audio-stream.ts",
+    "expectedSourceBackend": "vector",
+    "maxRank": 2
+  },
+  {
+    "id": "TC-03",
+    "name": "Cross-file Caller Dependency",
+    "query": "who calls extractCallRecordId",
+    "intent": "dependency_analysis",
+    "expectedCallersFound": ["handleIncomingCall", "syncSessionEvent"],
+    "maxRank": 3
+  },
+  {
+    "id": "TC-04",
+    "name": "Impact Blast Radius",
+    "query": "what breaks if CallRecordDTO changes",
+    "intent": "impact_analysis",
+    "expectedDependents": ["CallRecordRepository", "CallApiController"],
+    "maxRank": 3
+  },
+  {
+    "id": "TC-05",
+    "name": "Documentation-to-Code",
+    "query": "how to configure OAuth provider token refresh",
+    "intent": "documentation_search",
+    "expectedTopFile": "docs/architecture/oauth-flow.md",
+    "maxRank": 2
+  },
+  {
+    "id": "TC-06",
+    "name": "Prior Decision Recall",
+    "query": "why did we choose thin context broker architecture",
+    "intent": "decision_recall",
+    "expectedSymbol": "ADR-001",
+    "expectedSourceBackend": "memory",
+    "maxRank": 1
+  },
+  {
+    "id": "TC-07",
+    "name": "Freshly Modified File Check",
+    "query": "call record extraction header parsing",
+    "intent": "hybrid",
+    "expectedFile": "src/services/call-record.ts",
+    "mustIncludeDiffOrWarning": true
+  },
+  {
+    "id": "TC-08",
+    "name": "Uncommitted Git State Inspection",
+    "query": "current branch status and working diffs",
+    "intent": "hybrid",
+    "expectedSourceBackend": "git",
+    "maxRank": 3
+  }
+]

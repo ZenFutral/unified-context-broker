@@ -1,0 +1,27 @@
+{
+  "name": "@context-broker/adapter-codegraphcontext",
+  "version": "0.1.0",
+  "description": "CodeGraphContext adapter for Tree-sitter/SCIP symbol graphs, call hierarchies, and impact analysis",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rimraf dist",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@context-broker/contracts": "workspace:*",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "vitest": "^1.4.0"
+  }
+}

@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build artifacts & cache
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# Extension packaging
+*.vsix
+.vscode-test/
+
+# Testing & Coverage
+coverage/
+.nyc_output/
+
+# Logs & Debug
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Environment & Secrets
+*.env*
+!*.env.example
+
+# Local databases & Runtime Telemetry
+.context-broker/
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Operating System files
+.DS_Store
+Thumbs.db

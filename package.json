@@ -1,0 +1,37 @@
+{
+  "name": "context-broker-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Thin, local-first MCP Context Broker with replaceable upstream adapters",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zenfutral/context-broker.git"
+  },
+  "homepage": "https://github.com/zenfutral/context-broker#readme",
+  "bugs": {
+    "url": "https://github.com/zenfutral/context-broker/issues"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "test": "vitest run --workspace vitest.workspace.ts",
+    "test:watch": "vitest --workspace vitest.workspace.ts",
+    "typecheck": "turbo run build",
+    "lint": "turbo run build",
+    "package:extension": "pnpm --filter context-broker-vscode run package",
+    "clean": "turbo run clean && rimraf node_modules"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@types/node": "^20.11.0",
+    "rimraf": "^5.0.0",
+    "turbo": "^1.13.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.4.0",
+    "zod": "^3.23.0"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

@@ -1,0 +1,134 @@
+{
+  "name": "context-broker-vscode",
+  "displayName": "Context Broker MCP Companion",
+  "description": "VS Code client extension for the Unified Context Broker MCP Server",
+  "version": "0.1.0",
+  "publisher": "context-broker",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zenfutral/context-broker.git",
+    "directory": "apps/vscode-extension"
+  },
+  "bugs": {
+    "url": "https://github.com/zenfutral/context-broker/issues"
+  },
+  "homepage": "https://github.com/zenfutral/context-broker/tree/main/apps/vscode-extension#readme",
+  "icon": "resources/icon.png",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "AI",
+    "Other"
+  ],
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "context-broker",
+    "context",
+    "ai",
+    "token-savings",
+    "telemetry"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onView:contextBroker.telemetryView",
+    "onWebviewPanel:contextBrokerPage",
+    "onWebviewPanel:contextBrokerHUD",
+    "onWebviewPanel:contextBrokerPopOut",
+    "onWebviewPanel:contextBrokerDashboard",
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "contextBrokerContainer",
+          "title": "Context Broker",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "contextBrokerContainer": [
+        {
+          "type": "webview",
+          "id": "contextBroker.telemetryView",
+          "name": "Live Telemetry & Savings",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "contextBroker.initWorkspace",
+        "title": "Context Broker: Initialize / Populate Workspace Rules (context-broker.md)"
+      },
+      {
+        "command": "contextBroker.openPage",
+        "title": "Context Broker: Open Extension Page (Telemetry & Monitoring)"
+      },
+      {
+        "command": "contextBroker.showMenu",
+        "title": "Context Broker: Show Quick Menu"
+      },
+      {
+        "command": "contextBroker.openDraggableHUD",
+        "title": "Context Broker: Open Floating Draggable HUD Window"
+      },
+      {
+        "command": "contextBroker.popOutWindow",
+        "title": "Context Broker: Open Beside / Detached Window"
+      },
+      {
+        "command": "contextBroker.quickSearch",
+        "title": "Context Broker: Quick Hybrid Context Search"
+      },
+      {
+        "command": "contextBroker.getSymbolContext",
+        "title": "Context Broker: Get Symbol Context"
+      },
+      {
+        "command": "contextBroker.getImpactContext",
+        "title": "Context Broker: Analyze Impact Context"
+      },
+      {
+        "command": "contextBroker.getRepositoryMap",
+        "title": "Context Broker: Generate Repository Map"
+      },
+      {
+        "command": "contextBroker.backendHealth",
+        "title": "Context Broker: Check Backend Health"
+      },
+      {
+        "command": "contextBroker.recordDecision",
+        "title": "Context Broker: Record Architectural Decision"
+      },
+      {
+        "command": "contextBroker.recallDecisions",
+        "title": "Context Broker: Recall Architectural Decisions"
+      },
+      {
+        "command": "contextBroker.explainContext",
+        "title": "Context Broker: Explain Context Ranking"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rimraf dist",
+    "package": "vsce package --no-dependencies",
+    "publish:openvsx": "ovsx publish --no-dependencies"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@context-broker/contracts": "workspace:*",
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^4.0.0",
+    "ovsx": "^1.2.0",
+    "typescript": "^5.4.0"
+  }
+}
