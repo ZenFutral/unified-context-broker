@@ -28,8 +28,8 @@ if (Test-Path $McpBundle) {
 # Automatically deploy to AntiGravity IDE and VS Code active extensions folders
 $ExtSrc   = Join-Path $ProjectRoot "apps\vscode-extension"
 $DestDirs = @(
-  (Join-Path $env:USERPROFILE ".antigravity-ide\extensions\unified-context-broker.unified-context-broker-0.3.0"),
-  (Join-Path $env:USERPROFILE ".vscode\extensions\unified-context-broker.unified-context-broker-0.3.0")
+  (Join-Path $env:USERPROFILE ".antigravity-ide\extensions\unified-context-broker.unified-context-broker-0.3.1"),
+  (Join-Path $env:USERPROFILE ".vscode\extensions\unified-context-broker.unified-context-broker-0.3.1")
 )
 
 foreach ($ExtDest in $DestDirs) {

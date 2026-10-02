@@ -252,6 +252,66 @@ ${endTag}`;
 }
 
 /**
+ * Deploys the single external indicator to AGENTS.md strictly without polluting host root.
+ */
+export function deploySingleIndicatorToAgentsMd(
+  workspaceRoot: string,
+  brokerFolderName: string = 'unified-context-broker'
+): boolean {
+  const startTag = '<!-- CONTEXT_BROKER_START -->';
+  const endTag = '<!-- CONTEXT_BROKER_END -->';
+
+  const relPrefix = `./${brokerFolderName}`;
+
+  const skillBlock = `${startTag}
+## Context Broker Retrieval Engine (Embedded)
+
+This codebase embeds a self-contained context engine at \`${relPrefix}/\`.
+When inspecting, searching, navigating, or refactoring this repository, prioritize the embedded broker over brute-force file reads.
+
+### Direct Retrieval Commands (Zero-Daemon CLI)
+- **Hybrid Search:** \`node ${relPrefix}/packages/orchestrator/bin/cli.js search "<query>" --budget 8000\`
+- **Symbol Lookup:** \`node ${relPrefix}/packages/orchestrator/bin/cli.js symbol <name> [--file <path>]\`
+- **Repository Structure Digest:** \`node ${relPrefix}/packages/orchestrator/bin/cli.js digest\`
+- **Architectural Memory Recall:** \`node ${relPrefix}/packages/orchestrator/bin/cli.js memory recall "<query>"\`
+- **Persist Decision:** \`node ${relPrefix}/packages/orchestrator/bin/cli.js memory record --title "<title>" --decision "<decision>" --rationale "<rationale>"\`
+- **Engine Diagnostics:** \`node ${relPrefix}/packages/orchestrator/bin/cli.js --health\`
+- **Safe Source Mutation:** \`node ${relPrefix}/packages/orchestrator/bin/cli.js replace <file> --find "<target>" --replace "<replacement>"\`
+
+### MCP Integration (IDE & Multi-Agent Swarms)
+- **MCP Server Binary:** \`node ${relPrefix}/apps/mcp-server/dist/bundle.js\` (or \`node ${relPrefix}/apps/mcp-server/dist/index.js\`)
+- **Canonical Tools:** \`search_context\`, \`get_symbol_context\`, \`lookup_symbol\`, \`get_impact_context\`, \`analyze_impact\`, \`get_repository_map\`, \`get_repo_map\`, \`recall_decisions\`, \`record_decision\`, \`explain_context\`, \`backend_health\`, \`check_health\`, \`search_and_replace\`, \`replace_in_file\`, \`patch_file\`
+${endTag}`;
+
+  let agentsFile = path.join(workspaceRoot, 'AGENTS.md');
+  if (!fs.existsSync(agentsFile) && fs.existsSync(path.join(workspaceRoot, 'agent.md'))) {
+    agentsFile = path.join(workspaceRoot, 'agent.md');
+  }
+
+  let createdOrUpdated = false;
+  if (fs.existsSync(agentsFile)) {
+    const content = fs.readFileSync(agentsFile, 'utf8');
+    if (content.includes(startTag) && content.includes(endTag)) {
+      const before = content.split(startTag)[0];
+      const after = content.split(endTag)[1];
+      const updated = before + skillBlock + after;
+      if (updated !== content) {
+        fs.writeFileSync(agentsFile, updated, 'utf8');
+        createdOrUpdated = true;
+      }
+    } else {
+      fs.writeFileSync(agentsFile, content.trimEnd() + '\n\n' + skillBlock + '\n', 'utf8');
+      createdOrUpdated = true;
+    }
+  } else {
+    fs.writeFileSync(agentsFile, skillBlock + '\n', 'utf8');
+    createdOrUpdated = true;
+  }
+
+  return createdOrUpdated;
+}
+
+/**
  * Ensures workspace is completely initialized with self-contained MCP configuration and rules.
  */
 export function ensureWorkspaceInitialized(
