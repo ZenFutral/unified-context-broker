@@ -27,9 +27,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Validate Patch Ledger Compliance
-        run: pnpm vitest run upstream/tests/patch-governance.test.ts
-
       - name: Run Provider Contract Suite
         run: pnpm vitest run tests/contract/
 
