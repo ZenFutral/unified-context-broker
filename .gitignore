@@ -12,6 +12,7 @@ tsconfig.tsbuildinfo
 # Extension packaging
 *.vsix
 .vscode-test/
+apps/vscode-extension/server/
 
 # Testing & Coverage
 coverage/

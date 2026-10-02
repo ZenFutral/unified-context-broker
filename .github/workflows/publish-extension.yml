@@ -45,6 +45,8 @@ jobs:
       - name: Package extension (.vsix)
         working-directory: apps/vscode-extension
         run: |
+          mkdir -p server
+          cp ../mcp-server/dist/bundle.js server/server.mjs
           npx @vscode/vsce package --no-dependencies --out unified-context-broker.vsix
           ls -lh unified-context-broker.vsix
 

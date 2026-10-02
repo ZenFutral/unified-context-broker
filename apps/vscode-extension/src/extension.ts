@@ -12,18 +12,36 @@ let popOutPanel: vscode.WebviewPanel | undefined = undefined;
 const client = new ContextBrokerClient();
 
 export function activate(context: vscode.ExtensionContext) {
-  // 0. Auto-populate .agents/rules/context-broker.md in open workspaces if not already present
+  // 0. Auto-configure MCP server and agent rules in all open workspaces
   const serverEntry = resolveServerEntryPath(context.extensionUri);
   if (vscode.workspace.workspaceFolders) {
     for (const folder of vscode.workspace.workspaceFolders) {
       const result = ensureWorkspaceInitialized(folder.uri.fsPath, serverEntry, false);
-      if (result.ruleCreated) {
+      if (result.ruleCreated || result.mcpConfigCreated) {
         vscode.window.showInformationMessage(
-          'Context Broker: Auto-populated workspace rule "context-broker.md" to enforce MCP tool usage.'
+          'Context Broker: Automatically configured local MCP server and agent rules in this workspace.'
         );
       }
     }
   }
+
+  // Register explicit workspace configuration command
+  context.subscriptions.push(
+    vscode.commands.registerCommand('contextBroker.initWorkspace', async () => {
+      const folders = vscode.workspace.workspaceFolders;
+      if (!folders || folders.length === 0) {
+        vscode.window.showWarningMessage('Context Broker: No workspace folder is open.');
+        return;
+      }
+      const srv = resolveServerEntryPath(context.extensionUri);
+      for (const folder of folders) {
+        const res = ensureWorkspaceInitialized(folder.uri.fsPath, srv, true);
+        vscode.window.showInformationMessage(
+          `Context Broker: Deployed in "${folder.name}" (MCP Server: ${res.mcpConfigCreated ? 'Configured' : 'Up-to-date'}, Rules: ${res.ruleCreated ? 'Scaffolded' : 'Up-to-date'}).`
+        );
+      }
+    })
+  );
 
   // 1. Initialize Real-Time Telemetry Bridge (HTTP receiver + Multi-Directory Watcher + Polling)
   const workspacePaths = (vscode.workspace.workspaceFolders || []).map((f) => f.uri.fsPath);

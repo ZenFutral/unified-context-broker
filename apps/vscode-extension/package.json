@@ -2,7 +2,7 @@
   "name": "unified-context-broker",
   "displayName": "Unified Context Broker VSCode Companion",
   "description": "VS Code client extension for Unified Context Broker",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "publisher": "unified-context-broker",
   "license": "MIT",
   "repository": {
@@ -64,7 +64,7 @@
     "commands": [
       {
         "command": "contextBroker.initWorkspace",
-        "title": "Context Broker: Initialize / Populate Workspace Rules (context-broker.md)"
+        "title": "Context Broker: Deploy & Configure MCP Server & Rules in Current Workspace"
       },
       {
         "command": "contextBroker.openPage",
@@ -117,8 +117,8 @@
     ]
   },
   "scripts": {
-    "build": "tsc -b",
-    "clean": "rimraf dist",
+    "build": "tsc -b && node -e \"const fs=require('fs'),path=require('path');const src=path.resolve('../../apps/mcp-server/dist/bundle.js');if(fs.existsSync(src)){fs.mkdirSync('server',{recursive:true});fs.copyFileSync(src,'server/server.mjs');}\"",
+    "clean": "rimraf dist server",
     "package": "vsce package --no-dependencies",
     "publish:openvsx": "ovsx publish --no-dependencies"
   },
