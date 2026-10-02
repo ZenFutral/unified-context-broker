@@ -1,7 +1,49 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
-import { ToolExecutionEvent, getBrokerRoot } from '@context-broker/contracts';
+export interface ToolExecutionEvent {
+  id: string;
+  tool: string;
+  args: string;
+  latency: number;
+  tokensSaved: number;
+  timestamp: string;
+  status: 'success' | 'error';
+  requestPayload?: unknown;
+  responsePayload?: unknown;
+  details?: Record<string, unknown>;
+}
+
+function getBrokerRoot(startDir?: string): string {
+  let curr = startDir;
+  if (!curr) {
+    if (typeof __dirname !== 'undefined') {
+      curr = __dirname;
+    } else {
+      curr = process.cwd();
+    }
+  }
+
+  while (curr && curr !== path.dirname(curr)) {
+    try {
+      if (
+        fs.existsSync(path.join(curr, 'pnpm-workspace.yaml')) ||
+        (fs.existsSync(path.join(curr, 'package.json')) &&
+          fs.existsSync(path.join(curr, 'packages')) &&
+          ['unified-context-broker', 'context-broker-monorepo'].includes(
+            JSON.parse(fs.readFileSync(path.join(curr, 'package.json'), 'utf8')).name
+          ))
+      ) {
+        return curr;
+      }
+    } catch {
+      // Ignore read errors
+    }
+    curr = path.dirname(curr);
+  }
+  return '';
+}
+
 
 function parseToolExecutionEvent(
   raw: unknown

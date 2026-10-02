@@ -2,7 +2,7 @@
   "name": "unified-context-broker",
   "displayName": "Unified Context Broker VSCode Companion",
   "description": "VS Code client extension for Unified Context Broker",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "unified-context-broker",
   "license": "MIT",
   "repository": {

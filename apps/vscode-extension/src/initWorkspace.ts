@@ -1,9 +1,10 @@
 import type * as vscode from 'vscode';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { DEFAULT_CONTEXT_BROKER_RULE } from '@context-broker/contracts';
+export const CONTEXT_BROKER_RULE_CONTENT = `# Context Broker MCP — Tool Usage & Discovery Enforcement
 
-export const CONTEXT_BROKER_RULE_CONTENT = DEFAULT_CONTEXT_BROKER_RULE;
+This rule enforces the mandatory use of the **Context Broker MCP** tools (\`context-broker\`) whenever navigating, searching, analyzing, or modifying this codebase.
+`;
 
 
 /**

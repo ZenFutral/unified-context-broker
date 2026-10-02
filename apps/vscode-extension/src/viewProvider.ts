@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { getTelemetryWebviewContent } from './ui/telemetryView.js';
 import { ContextBrokerClient } from './client.js';
-import type { ToolExecutionEvent } from '@context-broker/contracts';
+import type { ToolExecutionEvent } from './telemetryBridge.js';
 
 export class ContextBrokerViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'contextBroker.telemetryView';
