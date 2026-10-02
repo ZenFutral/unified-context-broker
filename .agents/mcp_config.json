@@ -3,7 +3,7 @@
     "context-broker": {
       "command": "node",
       "args": [
-        "C:\\Users\\Zen\\Documents\\unified-context-broker-main\\apps\\mcp-server\\dist\\index.js"
+        "c:/Users/Zen/.antigravity-ide/extensions/unified-context-broker.unified-context-broker-0.3.2/server/server.mjs"
       ]
     }
   }

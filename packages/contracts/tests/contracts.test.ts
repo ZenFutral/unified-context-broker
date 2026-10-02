@@ -116,7 +116,7 @@ describe('Canonical Contracts Validation', () => {
   });
 
   it('exports authoritative DEFAULT_CONTEXT_BROKER_RULE template', () => {
-    expect(DEFAULT_CONTEXT_BROKER_RULE).toContain('Context Broker MCP — Tool Usage & Discovery Enforcement');
+    expect(DEFAULT_CONTEXT_BROKER_RULE).toContain('Context Broker MCP — Directive & Discovery Rules');
     expect(DEFAULT_CONTEXT_BROKER_RULE).toContain('search_context');
     expect(DEFAULT_CONTEXT_BROKER_RULE).toContain('get_symbol_context');
     expect(DEFAULT_CONTEXT_BROKER_RULE).toContain('get_impact_context');

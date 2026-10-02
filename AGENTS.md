@@ -1,21 +1,19 @@
 <!-- CONTEXT_BROKER_START -->
-## Context Broker Retrieval Engine (Embedded)
+## Context Broker Retrieval Engine
 
-This codebase embeds a self-contained context engine at `./unified-context-broker/`.
-When inspecting, searching, navigating, or refactoring this repository, prioritize the embedded broker over brute-force file reads.
+Context Broker provides ultra-fast hybrid retrieval (lexical + vector + AST code graph + git freshness) and durable memory.
+When inspecting, navigating, or modifying this repository, prioritize calling the Context Broker MCP tools over brute-force file reads.
 
-### Direct Retrieval Commands (Zero-Daemon CLI)
+### Canonical MCP Tools
+- `search_context(query, tokenBudget?)` — Hybrid search across code, docs, and git changes.
+- `get_symbol_context(symbol)` — Exact symbol definition, signature, callers, and references.
+- `get_impact_context(symbol)` — Blast radius and downstream callers before refactoring.
+- `get_repository_map()` — High-level architecture map and entry points.
+- `recall_decisions(query)` — Historical architectural decision memory (ADRs).
+- `record_decision(title, decision, rationale)` — Persist architectural choices to durable memory.
+- `backend_health()` — Health diagnostics across all 5 adapters (comP, CodeGraph, Vector, Git, Memory).
+- `search_and_replace(path, find, replace)` — Safe atomic AST-verified mutation with secret scrubbing.
 
-- **Hybrid Search:** `node ./packages/orchestrator/bin/cli.js search "<query>" --budget 8000` (or `node ./unified-context-broker/packages/orchestrator/bin/cli.js`)
-- **Symbol Lookup:** `node ./packages/orchestrator/bin/cli.js symbol <name> [--file <path>]` (or `node ./unified-context-broker/packages/orchestrator/bin/cli.js`)
-- **Repository Structure Digest:** `node ./packages/orchestrator/bin/cli.js digest`
-- **Architectural Memory Recall:** `node ./packages/orchestrator/bin/cli.js memory recall "<query>"`
-- **Persist Decision:** `node ./packages/orchestrator/bin/cli.js memory record --title "<title>" --decision "<decision>" --rationale "<rationale>"`
-- **Engine Diagnostics:** `node ./packages/orchestrator/bin/cli.js --health`
-- **Safe Source Mutation:** `node ./packages/orchestrator/bin/cli.js replace <file> --find "<target>" --replace "<replacement>"`
-
-### MCP Integration (IDE & Multi-Agent Swarms)
-
-- **MCP Server Binary:** `node ./apps/mcp-server/dist/bundle.js` (or `./unified-context-broker/apps/mcp-server/dist/bundle.js`)
-- **Canonical Tools:** `search_context`, `get_symbol_context`, `lookup_symbol`, `get_impact_context`, `analyze_impact`, `get_repository_map`, `get_repo_map`, `recall_decisions`, `record_decision`, `explain_context`, `backend_health`, `check_health`, `search_and_replace`, `replace_in_file`, `patch_file`
+### MCP Server Location
+`node "c:/Users/Zen/.antigravity-ide/extensions/unified-context-broker.unified-context-broker-0.3.2/server/server.mjs"`
 <!-- CONTEXT_BROKER_END -->
