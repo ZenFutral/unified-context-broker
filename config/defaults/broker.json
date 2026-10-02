@@ -24,7 +24,7 @@
     "memory": {
       "enabled": true,
       "timeoutMs": 1500,
-      "dbPath": ".data/memory/decisions.jsonl"
+      "dbPath": ".agents/memory/decisions.jsonl"
     }
   },
   "scoring": {

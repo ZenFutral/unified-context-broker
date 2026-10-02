@@ -145,16 +145,16 @@ if (-not (Test-Path $McpConfigPath) -or $Force) {
   Write-Host "  [OK] MCP configuration already exists: $McpConfigPath" -ForegroundColor Green
 }
 
-# 6. Create .vscode/mcp.json
-$VsCodeDir = Join-Path $Target ".vscode"
-if (-not (Test-Path $VsCodeDir)) {
-  New-Item -ItemType Directory -Path $VsCodeDir -Force | Out-Null
+# 6. Create C:/Users/<user>/.gemini/config/mcp_config.json
+$GeminiConfigDir = Join-Path $env:USERPROFILE ".gemini\config"
+if (-not (Test-Path $GeminiConfigDir)) {
+  New-Item -ItemType Directory -Path $GeminiConfigDir -Force | Out-Null
 }
-$VsCodeMcpPath = Join-Path $VsCodeDir "mcp.json"
-if (-not (Test-Path $VsCodeMcpPath) -or $Force) {
-  $VsCodeMcpJson = @"
+$GeminiMcpPath = Join-Path $GeminiConfigDir "mcp_config.json"
+if (-not (Test-Path $GeminiMcpPath) -or $Force) {
+  $GeminiMcpJson = @"
 {
-  "servers": {
+  "mcpServers": {
     "context-broker": {
       "command": "node",
       "args": [
@@ -167,8 +167,8 @@ if (-not (Test-Path $VsCodeMcpPath) -or $Force) {
   }
 }
 "@
-  $VsCodeMcpJson | Set-Content -Path $VsCodeMcpPath -Encoding UTF8
-  Write-Host "  [OK] Created VS Code MCP configuration: $VsCodeMcpPath" -ForegroundColor Green
+  $GeminiMcpJson | Set-Content -Path $GeminiMcpPath -Encoding UTF8
+  Write-Host "  [OK] Created Gemini MCP configuration: $GeminiMcpPath" -ForegroundColor Green
 }
 
 Write-Host ""

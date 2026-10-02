@@ -89,7 +89,7 @@ AI agents MUST prioritize Context Broker retrieval tools over brute-force file r
     }
 
     internal_mcp_targets = [
-        repo_root / ".vscode" / "mcp.json",
+        Path.home() / ".gemini" / "config" / "mcp_config.json",
         repo_root / ".agents" / "mcp_config.json"
     ]
 

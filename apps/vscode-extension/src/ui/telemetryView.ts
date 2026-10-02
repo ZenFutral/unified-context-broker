@@ -2,9 +2,10 @@
  * Generates the rich interactive webview HTML for the Context Broker HUD & Telemetry Window.
  * Supports:
  * 1. Estimated Token Savings stats & compression meter
- * 2. Real-time Status for each of the 5 providers (comP, CodeGraphContext, Vector, Git, Memory)
- * 3. Live Log of MCP Commands executed by the agent
- * 4. Draggable floating overlay mode with collapse/pin/move handles & Pop-out capability
+ * 2. Real-time Status for all 5 providers (comP, CodeGraphContext, Vector, Git, Memory)
+ * 3. Live Log of MCP Commands with expandable Input/Output view
+ * 4. Interactive Record ADR modal dialog
+ * 5. Draggable floating overlay mode with collapse/pin/move handles & Pop-out capability
  */
 export function getTelemetryWebviewContent(isFloatingHUD: boolean = false): string {
   return `<!DOCTYPE html>
@@ -61,7 +62,7 @@ export function getTelemetryWebviewContent(isFloatingHUD: boolean = false): stri
         position: absolute;
         top: 24px;
         left: 24px;
-        width: min(520px, calc(100vw - 48px));
+        width: min(540px, calc(100vw - 48px));
         max-height: calc(100vh - 48px);
         background: var(--bg-card);
         border: 1px solid var(--border-color);
@@ -122,26 +123,33 @@ export function getTelemetryWebviewContent(isFloatingHUD: boolean = false): stri
     .window-controls {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
     }
 
-    .btn-icon {
-      background: transparent;
-      border: 1px solid transparent;
-      color: var(--text-muted);
+    /* Clean visual buttons */
+    .btn-header {
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      color: var(--text-main);
       border-radius: 6px;
-      padding: 4px 6px;
+      padding: 5px 10px;
       font-size: 11px;
+      font-weight: 600;
       cursor: pointer;
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      justify-content: center;
-      transition: all 0.15s ease;
+      gap: 5px;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     }
-    .btn-icon:hover {
-      background: rgba(56, 189, 248, 0.15);
-      color: var(--accent-cyan);
-      border-color: rgba(56, 189, 248, 0.3);
+    .btn-header:hover {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: var(--accent-cyan);
+      color: #fff;
+      transform: translateY(-1px);
+    }
+    .btn-header svg {
+      fill: currentColor;
     }
 
     /* Content Area */
@@ -223,7 +231,7 @@ export function getTelemetryWebviewContent(isFloatingHUD: boolean = false): stri
     }
     .progress-bar {
       height: 100%;
-      width: 78.4%;
+      width: 0%;
       background: linear-gradient(90deg, #38bdf8, #34d399);
       border-radius: 3px;
       transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
@@ -232,7 +240,7 @@ export function getTelemetryWebviewContent(isFloatingHUD: boolean = false): stri
     /* 2. Providers Status Grid */
     .providers-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
       gap: 8px;
     }
 
@@ -273,11 +281,6 @@ export function getTelemetryWebviewContent(isFloatingHUD: boolean = false): stri
       color: var(--accent-emerald);
       border: 1px solid rgba(52, 211, 153, 0.3);
     }
-    .status-badge.degraded {
-      background: rgba(251, 191, 36, 0.15);
-      color: var(--accent-amber);
-      border: 1px solid rgba(251, 191, 36, 0.3);
-    }
 
     .provider-detail {
       font-size: 10px;
@@ -312,7 +315,7 @@ export function getTelemetryWebviewContent(isFloatingHUD: boolean = false): stri
       border-radius: 8px;
       padding: 6px;
       overflow-y: auto;
-      max-height: 240px;
+      max-height: 260px;
       display: flex;
       flex-direction: column;
       gap: 6px;
@@ -329,25 +332,12 @@ export function getTelemetryWebviewContent(isFloatingHUD: boolean = false): stri
       flex-direction: column;
       gap: 4px;
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      cursor: pointer;
     }
     .log-entry:hover {
       background: rgba(30, 41, 59, 0.85);
-      transform: translateX(2px);
     }
-    .log-entry.new-entry {
-      animation: logPulse 1.4s ease-out;
-      border-left-width: 4px;
-    }
-    @keyframes logPulse {
-      0% {
-        background: rgba(56, 189, 248, 0.35);
-        box-shadow: 0 0 12px rgba(56, 189, 248, 0.5);
-      }
-      100% {
-        background: rgba(18, 24, 38, 0.7);
-        box-shadow: none;
-      }
+    .log-entry-header {
+      cursor: pointer;
     }
 
     .log-row-top {
@@ -392,10 +382,46 @@ export function getTelemetryWebviewContent(isFloatingHUD: boolean = false): stri
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      max-width: 260px;
+      max-width: 320px;
     }
 
-    /* Simulation & Quick Actions bar */
+    /* Expandable Log Details Body */
+    .log-details-body {
+      background: rgba(10, 15, 26, 0.9);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      border-radius: 4px;
+      padding: 8px;
+      margin-top: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 11px;
+    }
+
+    .log-detail-section {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .detail-title {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      letter-spacing: 0.5px;
+    }
+    .detail-code {
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 4px;
+      padding: 6px 8px;
+      color: var(--text-main);
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 140px;
+      overflow-y: auto;
+    }
+
+    /* Action bar */
     .action-bar {
       display: flex;
       gap: 8px;
@@ -406,7 +432,7 @@ export function getTelemetryWebviewContent(isFloatingHUD: boolean = false): stri
       background: rgba(56, 189, 248, 0.12);
       border: 1px solid rgba(56, 189, 248, 0.25);
       color: var(--accent-cyan);
-      padding: 6px 10px;
+      padding: 8px 12px;
       border-radius: 6px;
       font-size: 11px;
       font-weight: 600;
@@ -420,6 +446,101 @@ export function getTelemetryWebviewContent(isFloatingHUD: boolean = false): stri
     .btn-action:hover {
       background: rgba(56, 189, 248, 0.25);
       border-color: var(--accent-cyan);
+      color: #fff;
+    }
+
+    /* ADR Modal Styling */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-content {
+      background: #0f172a;
+      border: 1px solid var(--accent-cyan);
+      border-radius: 10px;
+      width: min(480px, 95vw);
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-header {
+      padding: 12px 16px;
+      background: rgba(30, 41, 59, 0.8);
+      border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: 700;
+      color: var(--accent-cyan);
+    }
+    .modal-body {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .form-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+    }
+    .form-input, .form-textarea {
+      background: rgba(10, 15, 26, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      padding: 8px 10px;
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      font-size: 12px;
+      outline: none;
+    }
+    .form-input:focus, .form-textarea:focus {
+      border-color: var(--accent-cyan);
+    }
+    .form-textarea {
+      min-height: 60px;
+      resize: vertical;
+    }
+    .modal-footer {
+      padding: 12px 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: var(--text-muted);
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .btn-primary {
+      background: var(--accent-cyan);
+      border: none;
+      color: #090d16;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .btn-primary:hover {
+      background: #7dd3fc;
     }
 
     /* Collapsed state */
@@ -442,14 +563,25 @@ export function getTelemetryWebviewContent(isFloatingHUD: boolean = false): stri
           <span style="font-size: 10px; color: var(--text-dim); margin-left: 4px;">MCP</span>
         </div>
         <div class="window-controls">
-          <button class="btn-icon" id="btnSimulate" title="Simulate Agent MCP Tool Call">⚡ Test</button>
-          <button class="btn-icon" id="btnRefresh" title="Refresh Adapter Health">🔄</button>
+          <button class="btn-header" id="btnRefresh" title="Refresh Adapter Health">
+            <svg width="12" height="12" viewBox="0 0 16 16"><path fill="currentColor" d="M13.6 2.4A7.9 7.9 0 0 0 8 0a8 8 0 1 0 8 8h-2a6 6 0 1 1-1.8-4.2L10 6h6V0l-2.4 2.4z"/></svg>
+            <span>Refresh Health</span>
+          </button>
           ${isFloatingHUD ? `
-            <button class="btn-icon" id="btnOpenPage" title="Open Full Tab">↗ Page</button>
-            <button class="btn-icon" id="btnMinimize" title="Minimize / Expand">_</button>
+            <button class="btn-header" id="btnOpenPage" title="Open Full Tab">
+              <svg width="12" height="12" viewBox="0 0 16 16"><path fill="currentColor" d="M1.5 1h5l-2.1 2.1 5.4 5.4-1.4 1.4-5.4-5.4L1 6.5V1zm13 14h-5l2.1-2.1-5.4-5.4 1.4-1.4 5.4 5.4 2.1-2.1v5z"/></svg>
+              <span>Page</span>
+            </button>
+            <button class="btn-header" id="btnMinimize" title="Minimize / Expand">_</button>
           ` : `
-            <button class="btn-icon" id="btnFloatHUD" title="Open as Floating Draggable HUD">⧉ Float</button>
-            <button class="btn-icon" id="btnOpenPage" title="Open Full Tab / Beside">↗ Page</button>
+            <button class="btn-header" id="btnFloatHUD" title="Open as Floating Draggable HUD">
+              <svg width="12" height="12" viewBox="0 0 16 16"><path fill="currentColor" d="M1 3a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V3zm2-1a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1H3z"/></svg>
+              <span>Float</span>
+            </button>
+            <button class="btn-header" id="btnOpenPage" title="Open Full Tab / Beside">
+              <svg width="12" height="12" viewBox="0 0 16 16"><path fill="currentColor" d="M1.5 1h5l-2.1 2.1 5.4 5.4-1.4 1.4-5.4-5.4L1 6.5V1zm13 14h-5l2.1-2.1-5.4-5.4 1.4-1.4 5.4 5.4 2.1-2.1v5z"/></svg>
+              <span>Page</span>
+            </button>
           `}
         </div>
       </div>
@@ -493,7 +625,7 @@ export function getTelemetryWebviewContent(isFloatingHUD: boolean = false): stri
                 <span class="provider-name">comP</span>
                 <span class="status-badge healthy">Active</span>
               </div>
-              <div class="provider-detail">BM25 • 4ms</div>
+              <div class="provider-detail">BM25 Engine</div>
             </div>
 
             <div class="provider-pill">
@@ -501,7 +633,7 @@ export function getTelemetryWebviewContent(isFloatingHUD: boolean = false): stri
                 <span class="provider-name">CodeGraph</span>
                 <span class="status-badge healthy">Active</span>
               </div>
-              <div class="provider-detail">AST • 12ms</div>
+              <div class="provider-detail">AST Engine</div>
             </div>
 
             <div class="provider-pill">
@@ -509,7 +641,7 @@ export function getTelemetryWebviewContent(isFloatingHUD: boolean = false): stri
                 <span class="provider-name">Vector</span>
                 <span class="status-badge healthy">Active</span>
               </div>
-              <div class="provider-detail">ONNX • 18ms</div>
+              <div class="provider-detail">ONNX Embeds</div>
             </div>
 
             <div class="provider-pill">
@@ -517,7 +649,7 @@ export function getTelemetryWebviewContent(isFloatingHUD: boolean = false): stri
                 <span class="provider-name">Git</span>
                 <span class="status-badge healthy">Active</span>
               </div>
-              <div class="provider-detail">Diff • 2ms</div>
+              <div class="provider-detail">Git Freshness</div>
             </div>
 
             <div class="provider-pill">
@@ -525,7 +657,7 @@ export function getTelemetryWebviewContent(isFloatingHUD: boolean = false): stri
                 <span class="provider-name">Memory</span>
                 <span class="status-badge healthy">Active</span>
               </div>
-              <div class="provider-detail">SQLite • 1ms</div>
+              <div class="provider-detail">.agents Store</div>
             </div>
           </div>
         </div>
@@ -533,9 +665,9 @@ export function getTelemetryWebviewContent(isFloatingHUD: boolean = false): stri
         <!-- 3. MCP Command Logs Section -->
         <div class="logs-container">
           <div class="logs-header">
-            <div class="section-title" style="margin-bottom: 0;">Agent MCP Command Log</div>
+            <div class="section-title" style="margin-bottom: 0;">Agent MCP Command Log (Click entry to inspect)</div>
             <div class="logs-actions">
-              <button class="btn-icon" id="btnClearLogs" title="Clear Logs">Clear</button>
+              <button class="btn-header" id="btnClearLogs" title="Clear Logs">Clear</button>
             </div>
           </div>
           <div class="log-list" id="logList">
@@ -545,13 +677,40 @@ export function getTelemetryWebviewContent(isFloatingHUD: boolean = false): stri
 
         <!-- Action Bar -->
         <div class="action-bar">
-          <button class="btn-action" id="btnQuickSearch">
-            <span>🔍 Context Search</span>
-          </button>
           <button class="btn-action" id="btnRecordDecision">
-            <span>📝 Record ADR</span>
+            <span>📝 Record Architectural Decision (ADR)</span>
           </button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Interactive ADR Modal Dialog -->
+  <div id="adrModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span>📝 Record Architectural Decision Record (ADR)</span>
+        <button class="btn-header" id="btnCloseAdrModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label">ADR Title *</label>
+        <input type="text" id="adrTitle" class="form-input" placeholder="e.g. Store ADR Records in .agents Directory" />
+
+        <label class="form-label">Decision *</label>
+        <textarea id="adrDecision" class="form-textarea" placeholder="What architectural decision was made?"></textarea>
+
+        <label class="form-label">Rationale *</label>
+        <textarea id="adrRationale" class="form-textarea" placeholder="Why was this decision made? What trade-offs were evaluated?"></textarea>
+
+        <label class="form-label">Rejected Alternatives (Optional)</label>
+        <input type="text" id="adrAlternatives" class="form-input" placeholder="e.g. Unstructured text files, Cloud database (comma-separated)" />
+
+        <label class="form-label">Tags / Components (Optional)</label>
+        <input type="text" id="adrTags" class="form-input" placeholder="e.g. memory, architecture, adr (comma-separated)" />
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="btnCancelAdr">Cancel</button>
+        <button class="btn-primary" id="btnSubmitAdr">Save ADR to .agents</button>
       </div>
     </div>
   </div>
@@ -559,11 +718,12 @@ export function getTelemetryWebviewContent(isFloatingHUD: boolean = false): stri
   <script>
     const vscode = typeof acquireVsCodeApi === 'function' ? acquireVsCodeApi() : null;
 
-    // State (initialized to 0 so real agent usage is accurately reflected)
+    // State
     let totalSaved = 0;
     let totalServed = 0;
     let totalTarget = 0;
     let logs = [];
+    let expandedLogId = null;
 
     function escapeHtml(str) {
       if (!str) return '';
@@ -572,6 +732,15 @@ export function getTelemetryWebviewContent(isFloatingHUD: boolean = false): stri
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
+    }
+
+    function toggleLogDetails(id) {
+      if (expandedLogId === id) {
+        expandedLogId = null;
+      } else {
+        expandedLogId = id;
+      }
+      renderLogs();
     }
 
     function renderLogs() {
@@ -583,31 +752,46 @@ export function getTelemetryWebviewContent(isFloatingHUD: boolean = false): stri
           <div style="padding: 28px 16px; text-align: center; color: var(--text-dim);">
             <div style="font-size: 26px; margin-bottom: 8px;">⚡</div>
             <div style="font-weight: 600; color: var(--text-muted); font-size: 13px; margin-bottom: 6px;">Waiting for MCP Tool Calls</div>
-            <div style="font-size: 11px; line-height: 1.5; max-width: 320px; margin: 0 auto;">
-              When AI agents invoke Context Broker tools (such as <code>search_context</code> or <code>get_symbol_context</code>), live token reductions vs. target files will stream here automatically.
+            <div style="font-size: 11px; line-height: 1.5; max-width: 340px; margin: 0 auto;">
+              When AI agents invoke Context Broker tools (such as <code>search_context</code> or <code>get_symbol_context</code>), live command logs and input/output payloads will stream here automatically.
             </div>
           </div>
         \`;
         return;
       }
 
-      container.innerHTML = logs.map(item => \`
-        <div class="log-entry \${item.isNew ? 'new-entry' : ''}" onclick="onLogClick('\${item.tool}')">
-          <div class="log-row-top">
-            <span class="log-tool \${item.type}">\${escapeHtml(item.tool)}</span>
-            <span class="log-time">\${escapeHtml(item.time)} (\${item.latency})</span>
-          </div>
-          <div class="log-row-details">
-            <span class="log-args">\${escapeHtml(item.args)}</span>
-            <span class="log-saved">\${item.tokensSaved}</span>
-          </div>
-          \${item.breakdown ? \`
-            <div style="font-size: 10px; color: var(--accent-cyan); margin-top: 4px; font-family: var(--font-mono); opacity: 0.9;">
-              \${escapeHtml(item.breakdown)}
+      container.innerHTML = logs.map(item => {
+        const isExpanded = expandedLogId === item.id;
+        const inputPayload = item.args || 'No arguments provided';
+        const outputPayload = item.breakdown || item.details ? JSON.stringify(item.details || {}, null, 2) : 'Command executed successfully.';
+
+        return \`
+          <div class="log-entry \${item.isNew ? 'new-entry' : ''}">
+            <div class="log-entry-header" onclick="toggleLogDetails('\${item.id}')">
+              <div class="log-row-top">
+                <span class="log-tool \${item.type}">\${escapeHtml(item.tool)}</span>
+                <span class="log-time">\${escapeHtml(item.time)} (\${item.latency})</span>
+              </div>
+              <div class="log-row-details">
+                <span class="log-args">\${escapeHtml(item.args)}</span>
+                <span class="log-saved">\${item.tokensSaved}</span>
+              </div>
             </div>
-          \` : ''}
-        </div>
-      \`).join('');
+            \${isExpanded ? \`
+              <div class="log-details-body">
+                <div class="log-detail-section">
+                  <span class="detail-title">📥 INPUT (Command & Parameters):</span>
+                  <pre class="detail-code">\${escapeHtml(inputPayload)}</pre>
+                </div>
+                <div class="log-detail-section">
+                  <span class="detail-title">📤 OUTPUT (Response & Token Breakdown):</span>
+                  <pre class="detail-code">\${escapeHtml(outputPayload)}</pre>
+                </div>
+              </div>
+            \` : ''}
+          </div>
+        \`;
+      }).join('');
     }
 
     function addLogEntry(tool, args, latency, savedCount, isInitial, details) {
@@ -646,8 +830,8 @@ export function getTelemetryWebviewContent(isFloatingHUD: boolean = false): stri
         breakdown = \`\${fileStr}: \${Number(details.targetFilesTotalTokens).toLocaleString()} tok → \${Number(details.mcpResponseTokens || 0).toLocaleString()} mcp tok\${redPct}\`;
       }
 
-      logs.unshift({
-        id: Date.now() + Math.random(),
+      const item = {
+        id: 'log-' + Date.now() + '-' + Math.floor(Math.random() * 10000),
         tool: tool,
         args: args || '',
         time: isInitial ? 'History' : 'Just now',
@@ -655,17 +839,14 @@ export function getTelemetryWebviewContent(isFloatingHUD: boolean = false): stri
         tokensSaved: '+' + savedNum.toLocaleString() + ' saved',
         breakdown: breakdown,
         type: type,
+        details: details,
         isNew: !isInitial
-      });
+      };
+
+      logs.unshift(item);
 
       if (logs.length > 50) logs.pop();
       renderLogs();
-    }
-
-    function onLogClick(tool) {
-      if (vscode) {
-        vscode.postMessage({ command: 'logClicked', tool: tool });
-      }
     }
 
     // Draggable Logic for Floating HUD
@@ -714,41 +895,7 @@ export function getTelemetryWebviewContent(isFloatingHUD: boolean = false): stri
       });
     }
 
-    // Button actions
-    const btnSimulate = document.getElementById('btnSimulate');
-    if (btnSimulate) {
-      btnSimulate.addEventListener('click', () => {
-        const tools = [
-          {
-            tool: 'search_context',
-            args: 'query: "rank fusion weights"',
-            latency: 11,
-            saved: 4820,
-            details: { targetFilesTotalTokens: 5200, mcpResponseTokens: 380, filesCount: 2, reductionPct: 92.7 }
-          },
-          {
-            tool: 'get_symbol_context',
-            args: 'symbol: "ContextCandidate"',
-            latency: 7,
-            saved: 2450,
-            details: { targetFilesTotalTokens: 2600, mcpResponseTokens: 150, filesCount: 1, reductionPct: 94.2 }
-          },
-          {
-            tool: 'get_impact_context',
-            args: 'symbol: "ProviderRegistry"',
-            latency: 19,
-            saved: 6100,
-            details: { targetFilesTotalTokens: 6600, mcpResponseTokens: 500, filesCount: 3, reductionPct: 92.4 }
-          }
-        ];
-        const random = tools[Math.floor(Math.random() * tools.length)];
-        addLogEntry(random.tool, random.args, random.latency, random.saved, false, random.details);
-        if (vscode) {
-          vscode.postMessage({ command: 'simulateRan', tool: random.tool });
-        }
-      });
-    }
-
+    // Header buttons
     const btnRefresh = document.getElementById('btnRefresh');
     if (btnRefresh) {
       btnRefresh.addEventListener('click', () => {
@@ -782,13 +929,6 @@ export function getTelemetryWebviewContent(isFloatingHUD: boolean = false): stri
       });
     }
 
-    const btnPopOut = document.getElementById('btnPopOut');
-    if (btnPopOut) {
-      btnPopOut.addEventListener('click', () => {
-        if (vscode) vscode.postMessage({ command: 'popOutWindow' });
-      });
-    }
-
     const btnFloatHUD = document.getElementById('btnFloatHUD');
     if (btnFloatHUD) {
       btnFloatHUD.addEventListener('click', () => {
@@ -796,17 +936,58 @@ export function getTelemetryWebviewContent(isFloatingHUD: boolean = false): stri
       });
     }
 
-    const btnQuickSearch = document.getElementById('btnQuickSearch');
-    if (btnQuickSearch) {
-      btnQuickSearch.addEventListener('click', () => {
-        if (vscode) vscode.postMessage({ command: 'quickSearch' });
-      });
+    // Record ADR Modal Logic
+    const adrModal = document.getElementById('adrModal');
+    const btnRecordDecision = document.getElementById('btnRecordDecision');
+    const btnCloseAdrModal = document.getElementById('btnCloseAdrModal');
+    const btnCancelAdr = document.getElementById('btnCancelAdr');
+    const btnSubmitAdr = document.getElementById('btnSubmitAdr');
+
+    function openAdrModal() {
+      if (adrModal) adrModal.style.display = 'flex';
+      const elTitle = document.getElementById('adrTitle');
+      if (elTitle) elTitle.focus();
     }
 
-    const btnRecordDecision = document.getElementById('btnRecordDecision');
+    function closeAdrModal() {
+      if (adrModal) adrModal.style.display = 'none';
+      const fields = ['adrTitle', 'adrDecision', 'adrRationale', 'adrAlternatives', 'adrTags'];
+      for (const id of fields) {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      }
+    }
+
     if (btnRecordDecision) {
-      btnRecordDecision.addEventListener('click', () => {
-        if (vscode) vscode.postMessage({ command: 'recordDecision' });
+      btnRecordDecision.addEventListener('click', openAdrModal);
+    }
+    if (btnCloseAdrModal) btnCloseAdrModal.addEventListener('click', closeAdrModal);
+    if (btnCancelAdr) btnCancelAdr.addEventListener('click', closeAdrModal);
+
+    if (btnSubmitAdr) {
+      btnSubmitAdr.addEventListener('click', () => {
+        const title = (document.getElementById('adrTitle').value || '').trim();
+        const decision = (document.getElementById('adrDecision').value || '').trim();
+        const rationale = (document.getElementById('adrRationale').value || '').trim();
+        const alternatives = (document.getElementById('adrAlternatives').value || '').trim();
+        const tags = (document.getElementById('adrTags').value || '').trim();
+
+        if (!title || !decision || !rationale) {
+          alert('Please fill out Title, Decision, and Rationale.');
+          return;
+        }
+
+        if (vscode) {
+          vscode.postMessage({
+            command: 'submitAdr',
+            title,
+            decision,
+            rationale,
+            alternatives: alternatives ? alternatives.split(',').map(s => s.trim()).filter(Boolean) : [],
+            tags: tags ? tags.split(',').map(s => s.trim()).filter(Boolean) : []
+          });
+        }
+        closeAdrModal();
       });
     }
 

@@ -124,7 +124,7 @@ export function loadBrokerConfig(configPath?: string, cwd: string = process.cwd(
   }
 
   if (!config.adapters.memory.dbPath) {
-    config.adapters.memory.dbPath = process.env['MEMORY_DB_PATH'] || path.join(getBrokerRoot(cwd), '.data', 'memory', 'decisions.jsonl');
+    config.adapters.memory.dbPath = process.env['MEMORY_DB_PATH'] || path.join(getBrokerRoot(cwd), '.agents', 'memory', 'decisions.jsonl');
   }
 
   return config;

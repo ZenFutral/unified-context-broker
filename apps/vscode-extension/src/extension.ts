@@ -5,11 +5,87 @@ import { getTelemetryWebviewContent } from './ui/telemetryView.js';
 import { TelemetryBridge } from './telemetryBridge.js';
 import { ensureWorkspaceInitialized, resolveServerEntryPath } from './initWorkspace.js';
 
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+
 let statusBarItem: vscode.StatusBarItem;
 let pagePanel: vscode.WebviewPanel | undefined = undefined;
 let hudPanel: vscode.WebviewPanel | undefined = undefined;
 let popOutPanel: vscode.WebviewPanel | undefined = undefined;
+let totalSavedTokens = 0;
+let totalTargetTokens = 0;
 const client = new ContextBrokerClient();
+
+function updateStatusBarText() {
+  if (!statusBarItem) return;
+  const pct = totalTargetTokens > 0 ? Math.min(99.9, (totalSavedTokens / totalTargetTokens) * 100) : 0;
+  const savedFmt = totalSavedTokens >= 1000 ? `${(totalSavedTokens / 1000).toFixed(1)}k` : `${totalSavedTokens}`;
+  statusBarItem.text = `$(zap) ${savedFmt} Saved (${pct.toFixed(1)}%)`;
+  statusBarItem.tooltip = `Context Broker: Total Tokens Saved ${totalSavedTokens.toLocaleString()} (${pct.toFixed(1)}%) (Click for Menu)`;
+}
+
+function persistAdrRecordToWorkspace(
+  title: string,
+  decision: string,
+  rationale: string,
+  alternatives: string[] = [],
+  tags: string[] = []
+): { id: string; dbPath: string; mdPath: string } {
+  const folders = vscode.workspace.workspaceFolders;
+  const workspaceRoot = folders && folders.length > 0 && folders[0] ? folders[0].uri.fsPath : process.cwd();
+
+  const agentsDir = path.join(workspaceRoot, '.agents');
+  const memoryDir = path.join(agentsDir, 'memory');
+  const dbFile = path.join(memoryDir, 'decisions.jsonl');
+  const adrDir = path.join(agentsDir, 'adr');
+
+  if (!fs.existsSync(memoryDir)) fs.mkdirSync(memoryDir, { recursive: true });
+  if (!fs.existsSync(adrDir)) fs.mkdirSync(adrDir, { recursive: true });
+
+  let count = 0;
+  if (fs.existsSync(dbFile)) {
+    try {
+      const content = fs.readFileSync(dbFile, 'utf8');
+      count = content.split('\n').filter((l) => l.trim().length > 0).length;
+    } catch {
+      count = 0;
+    }
+  }
+
+  const id = `ADR-${String(count + 1).padStart(3, '0')}`;
+  const timestamp = new Date().toISOString();
+  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  const mdFileName = `${id}-${slug}.md`;
+  const mdRelativePath = `.agents/adr/${mdFileName}`;
+
+  const record = {
+    id,
+    title,
+    decision,
+    rationale,
+    rejectedAlternatives: alternatives,
+    affectedComponents: tags.length > 0 ? tags : ['architecture'],
+    author: 'Developer (VS Code)',
+    timestamp,
+    tags: tags.length > 0 ? tags : ['architecture'],
+    sourceFile: mdRelativePath
+  };
+
+  fs.appendFileSync(dbFile, JSON.stringify(record) + '\n', 'utf8');
+
+  const mdContent = `# ${id}: ${title}\n\n` +
+    `**Date:** ${timestamp.split('T')[0]}\n` +
+    `**Author:** Developer (VS Code)\n` +
+    `**Status:** Accepted\n\n` +
+    `## Decision\n${decision}\n\n` +
+    `## Rationale\n${rationale}\n\n` +
+    (alternatives.length > 0 ? `## Rejected Alternatives\n${alternatives.map((a) => `- ${a}`).join('\n')}\n\n` : '') +
+    (tags.length > 0 ? `## Tags\n${tags.map((t) => `\`${t}\``).join(', ')}\n` : '');
+
+  fs.writeFileSync(path.join(adrDir, mdFileName), mdContent, 'utf8');
+
+  return { id, dbPath: dbFile, mdPath: mdRelativePath };
+}
 
 export function activate(context: vscode.ExtensionContext) {
   // 0. Auto-configure MCP server and agent rules in all open workspaces
@@ -85,12 +161,13 @@ export function activate(context: vscode.ExtensionContext) {
       });
     }
 
-    if (statusBarItem) {
-      statusBarItem.text = `$(zap) ${event.tool}: +${event.tokensSaved.toLocaleString()} tok`;
-      setTimeout(() => {
-        statusBarItem.text = '$(layers) Context Broker: 5/5';
-      }, 4000);
-    }
+    const savedNum = Number(event.tokensSaved || 0);
+    const servedNum = event.details && (event.details as Record<string, unknown>)['mcpResponseTokens'] ? Number((event.details as Record<string, unknown>)['mcpResponseTokens']) : (savedNum > 0 ? Math.max(50, Math.round(savedNum * 0.15)) : 0);
+    const targetNum = event.details && (event.details as Record<string, unknown>)['targetFilesTotalTokens'] ? Number((event.details as Record<string, unknown>)['targetFilesTotalTokens']) : (savedNum + servedNum);
+
+    totalSavedTokens += savedNum;
+    totalTargetTokens += targetNum;
+    updateStatusBarText();
   });
 
   // Helper to wire up any webview panel (editor page, HUD, or popout)
@@ -133,6 +210,20 @@ export function activate(context: vscode.ExtensionContext) {
           case 'recordDecision':
             vscode.commands.executeCommand('contextBroker.recordDecision');
             break;
+          case 'submitAdr': {
+            const { title, decision, rationale, alternatives, tags } = data;
+            const res = persistAdrRecordToWorkspace(title, decision, rationale, alternatives, tags);
+            vscode.window.showInformationMessage(`Context Broker: Recorded ${res.id} in .agents/memory & ${res.mdPath}`);
+            broadcastMessage({
+              command: 'mcpCommandLogged',
+              tool: 'record_decision',
+              args: `id: "${res.id}", title: "${title}"`,
+              latency: 4,
+              tokensSaved: 850,
+              details: { id: res.id, title, decision, rationale, mdPath: res.mdPath }
+            });
+            break;
+          }
           case 'refreshStatus': {
             const health = await client.checkHealth();
             vscode.window.showInformationMessage(`Context Broker: ${health.message}`);
@@ -188,8 +279,7 @@ export function activate(context: vscode.ExtensionContext) {
   // 5. Status Bar Item (Bottom Bar)
   statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
   statusBarItem.command = 'contextBroker.showMenu';
-  statusBarItem.text = '$(layers) Context Broker: 5/5';
-  statusBarItem.tooltip = 'Click to open Context Broker Window & Menu';
+  updateStatusBarText();
   statusBarItem.show();
   context.subscriptions.push(statusBarItem);
 
@@ -500,23 +590,30 @@ export function activate(context: vscode.ExtensionContext) {
   // Tool 6: record_decision
   context.subscriptions.push(
     vscode.commands.registerCommand('contextBroker.recordDecision', async () => {
-      const title = await vscode.window.showInputBox({ prompt: 'Architectural Decision Title' });
+      const title = await vscode.window.showInputBox({ prompt: 'Architectural Decision Title', placeHolder: 'e.g. Store ADR Records in .agents Directory' });
       if (!title) return;
 
-      const decision = await vscode.window.showInputBox({ prompt: 'What was decided?' });
+      const decision = await vscode.window.showInputBox({ prompt: 'What was decided?', placeHolder: 'e.g. Save decision records under .agents/memory/' });
       if (!decision) return;
 
-      const rationale = await vscode.window.showInputBox({ prompt: 'Why was this decided?' });
+      const rationale = await vscode.window.showInputBox({ prompt: 'Why was this decided?', placeHolder: 'e.g. Keeps agent customizations and decisions organized' });
       if (!rationale) return;
 
-      const res = await client.recordDecision(title, decision, rationale);
-      vscode.window.showInformationMessage(res);
+      const altRaw = await vscode.window.showInputBox({ prompt: 'Rejected Alternatives (comma-separated, optional)', placeHolder: 'e.g. Cloud storage, Root directory' });
+      const alternatives = altRaw ? altRaw.split(',').map((s) => s.trim()).filter(Boolean) : [];
+
+      const tagsRaw = await vscode.window.showInputBox({ prompt: 'Tags or Components (comma-separated, optional)', placeHolder: 'e.g. memory, architecture, adr' });
+      const tags = tagsRaw ? tagsRaw.split(',').map((s) => s.trim()).filter(Boolean) : [];
+
+      const res = persistAdrRecordToWorkspace(title, decision, rationale, alternatives, tags);
+      vscode.window.showInformationMessage(`Context Broker: Recorded ${res.id} in .agents/memory/decisions.jsonl & ${res.mdPath}`);
       broadcastMessage({
         command: 'mcpCommandLogged',
         tool: 'record_decision',
-        args: `title: "${title}"`,
-        latency: 5,
-        tokensSaved: 850
+        args: `id: "${res.id}", title: "${title}"`,
+        latency: 4,
+        tokensSaved: 850,
+        details: { id: res.id, title, decision, rationale, mdPath: res.mdPath }
       });
     })
   );

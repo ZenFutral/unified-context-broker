@@ -6,6 +6,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { execSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
@@ -157,12 +158,12 @@ export function validateAndFixAll(options = {}) {
     }
   }
 
-  // 3. Storage and Directory Isolation (.data/)
-  log(`\n${COLORS.bold}3. Validating Conconfined Storage (.data/)...${COLORS.reset}`);
+  // 3. Storage and Directory Isolation (.data/ and .agents/)
+  log(`\n${COLORS.bold}3. Validating Conconfined Storage (.data/ & .agents/)...${COLORS.reset}`);
   const requiredDataDirs = [
     path.join(REPO_ROOT, '.data'),
     path.join(REPO_ROOT, '.data', 'telemetry'),
-    path.join(REPO_ROOT, '.data', 'memory')
+    path.join(REPO_ROOT, '.agents', 'memory')
   ];
   for (const dir of requiredDataDirs) {
     if (!fs.existsSync(dir)) {
@@ -178,17 +179,17 @@ export function validateAndFixAll(options = {}) {
     }
   }
 
-  const memoryFile = path.join(REPO_ROOT, '.data', 'memory', 'decisions.jsonl');
+  const memoryFile = path.join(REPO_ROOT, '.agents', 'memory', 'decisions.jsonl');
   if (!fs.existsSync(memoryFile)) {
     issuesFound++;
-    warn(`Durable ADR file missing: .data/memory/decisions.jsonl`);
+    warn(`Durable ADR file missing: .agents/memory/decisions.jsonl`);
     if (isFix) {
       fs.writeFileSync(memoryFile, '', 'utf8');
-      fixed(`Initialized durable ADR file: .data/memory/decisions.jsonl`);
+      fixed(`Initialized durable ADR file: .agents/memory/decisions.jsonl`);
       issuesFixed++;
     }
   } else {
-    ok(`Durable ADR file exists: .data/memory/decisions.jsonl`);
+    ok(`Durable ADR file exists: .agents/memory/decisions.jsonl`);
   }
 
   // 4. MCP Configuration Files
@@ -204,7 +205,7 @@ export function validateAndFixAll(options = {}) {
   };
 
   const mcpConfigTargets = [
-    path.join(REPO_ROOT, '.vscode', 'mcp.json'),
+    path.join(os.homedir(), '.gemini', 'config', 'mcp_config.json'),
     path.join(REPO_ROOT, '.agents', 'mcp_config.json')
   ];
 

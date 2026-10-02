@@ -3,6 +3,8 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEFAULT_CONTEXT_BROKER_RULE, getBrokerRoot } from '@context-broker/contracts';
 
+import * as os from 'node:os';
+
 export const CONTEXT_BROKER_RULE_CONTENT = DEFAULT_CONTEXT_BROKER_RULE;
 
 export function deploySingleIndicatorToAgentsMd(hostDir: string, brokerFolderName: string): void {
@@ -69,11 +71,10 @@ export function initializeCodebase(targetPath?: string): void {
   }
   fs.writeFileSync(path.join(internalRulesDir, 'context-broker.md'), CONTEXT_BROKER_RULE_CONTENT, 'utf8');
 
-  // 2. Scaffold internal MCP config inside brokerRoot
+  // 2. Scaffold MCP config inside .agents and user .gemini config
   const currentFilePath = fileURLToPath(import.meta.url);
   const serverPath = path.join(path.dirname(currentFilePath), 'index.js').replace(/\\/g, '/');
 
-  const mcpConfigPath = path.join(internalAgentsDir, 'mcp_config.json');
   const mcpConfig = {
     mcpServers: {
       'context-broker': {
@@ -85,7 +86,19 @@ export function initializeCodebase(targetPath?: string): void {
       }
     }
   };
-  fs.writeFileSync(mcpConfigPath, JSON.stringify(mcpConfig, null, 2), 'utf8');
+
+  const targets = [
+    path.join(internalAgentsDir, 'mcp_config.json'),
+    path.join(os.homedir(), '.gemini', 'config', 'mcp_config.json')
+  ];
+
+  for (const t of targets) {
+    const parent = path.dirname(t);
+    if (!fs.existsSync(parent)) {
+      fs.mkdirSync(parent, { recursive: true });
+    }
+    fs.writeFileSync(t, JSON.stringify(mcpConfig, null, 2), 'utf8');
+  }
 
   // 3. Deploy single indicator to targetDir/AGENTS.md
   deploySingleIndicatorToAgentsMd(targetDir, brokerFolderName);

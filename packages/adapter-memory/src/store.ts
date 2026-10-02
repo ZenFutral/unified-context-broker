@@ -19,7 +19,7 @@ export class MemoryStore {
     if (this.config.dbPath) {
       this.filePath = this.config.dbPath;
     } else {
-      this.filePath = path.join(getBrokerRoot(), '.data', 'memory', 'decisions.jsonl');
+      this.filePath = path.join(getBrokerRoot(), '.agents', 'memory', 'decisions.jsonl');
     }
 
     this.loadFromDisk();
