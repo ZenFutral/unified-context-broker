@@ -1,15 +1,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import os from 'node:os';
-import { fileURLToPath } from 'node:url';
-import { ToolExecutionEvent } from '@context-broker/contracts';
+import { ToolExecutionEvent, getBrokerRoot } from '@context-broker/contracts';
 
 const EXTENSION_PORT = 49221;
+const fileTokenCache = new Map<string, { mtime: number; tokens: number }>();
 
 /**
- * Discovers candidate directories where telemetry files should be persisted.
- * Writes to both the active workspace and user profile so IDE extensions,
- * sandboxes, and standalone daemons can all discover the stream.
+ * Discovers target directories where telemetry events are recorded.
+ * Resolves strictly relative to the package installation directory (<brokerRoot>/.data/telemetry/).
  */
 export function getCandidateTelemetryDirs(): string[] {
   const dirs: string[] = [];
@@ -18,30 +16,12 @@ export function getCandidateTelemetryDirs(): string[] {
     dirs.push(process.env['CONTEXT_BROKER_TELEMETRY_DIR']);
   }
 
-  // 1. Module-relative paths (always resolves correctly regardless of process.cwd)
-  try {
-    const thisDir = path.dirname(fileURLToPath(import.meta.url));
-    dirs.push(path.resolve(thisDir, '../../.context-broker'));
-    dirs.push(path.resolve(thisDir, '../../../.context-broker'));
-    dirs.push(path.resolve(thisDir, '../../../../.context-broker'));
-  } catch {
-    // ignore
-  }
+  // Primary broker internal telemetry directory
+  const brokerRoot = getBrokerRoot();
+  dirs.push(path.join(brokerRoot, '.data', 'telemetry'));
 
-  // 2. Current working directory / workspace root
-  dirs.push(path.join(process.cwd(), '.context-broker'));
-
-  // 3. Monorepo root if running from a subpackage
-  const monorepoRoot = path.resolve(process.cwd(), '..');
-  if (path.basename(monorepoRoot) === 'ContextMCP' || fs.existsSync(path.join(monorepoRoot, 'pnpm-workspace.yaml'))) {
-    dirs.push(path.join(monorepoRoot, '.context-broker'));
-  }
-
-  // 4. User home directory
-  dirs.push(path.join(os.homedir(), '.context-broker'));
-
-  // 5. Operating system temp directory
-  dirs.push(path.join(os.tmpdir(), '.context-broker'));
+  // Fallback internal directory within broker root
+  dirs.push(path.join(brokerRoot, '.data'));
 
   // Deduplicate normalized paths
   const unique = new Set<string>();
@@ -92,31 +72,19 @@ function resolveFilePath(filePath: string, workspaceIds?: string[]): string | un
   const cwdCandidate = path.resolve(process.cwd(), clean);
   if (fs.existsSync(cwdCandidate)) return cwdCandidate;
 
-  // 4. Check workspace ancestor directories (up to 4 levels)
-  let curr = process.cwd();
-  for (let i = 0; i < 4; i++) {
-    const cand = path.resolve(curr, clean);
-    if (fs.existsSync(cand)) return cand;
-    const candInSub = path.resolve(curr, 'context-broker', clean);
-    if (fs.existsSync(candInSub)) return candInSub;
-    const parent = path.dirname(curr);
-    if (parent === curr) break;
-    curr = parent;
-  }
-
   return undefined;
 }
 
 /**
  * Calculates token savings according to the formula:
  * Token Saving = (Sum of Token Count of all Target Files Involved) - (MCP Response Tokens)
+ * Uses in-memory stat mtime caching for maximum speed.
  */
 export function calculateTokenMetrics(
   tool: string,
   args: Record<string, unknown> | undefined,
   result: unknown
 ): TokenMetricsResult {
-  // 1. Extract raw MCP response text and calculate response token count (~4 chars / token)
   let responseText = '';
   if (result && typeof result === 'object' && 'content' in result) {
     const content = (result as { content?: Array<{ type?: string; text?: string }> }).content;
@@ -131,7 +99,6 @@ export function calculateTokenMetrics(
 
   const mcpResponseTokens = Math.max(1, Math.ceil(responseText.length / 4));
 
-  // 2. Parse response data to discover all target files involved
   let parsedData: any = null;
   try {
     if (responseText) {
@@ -143,12 +110,10 @@ export function calculateTokenMetrics(
 
   const uniqueFiles = new Set<string>();
 
-  // Collect from arguments
   if (typeof args?.['filePath'] === 'string' && args['filePath'].trim()) {
     uniqueFiles.add(args['filePath'].trim());
   }
 
-  // Collect from parsed response data (candidates, impact candidates, repo-map entries, decisions)
   if (parsedData) {
     const candidateCollections = [
       parsedData.candidates,
@@ -166,13 +131,20 @@ export function calculateTokenMetrics(
         }
       }
     }
+
+    if (typeof parsedData?.targetFile === 'string' && parsedData.targetFile.trim()) {
+      uniqueFiles.add(parsedData.targetFile.trim());
+    }
+  }
+
+  if (typeof args?.['targetFile'] === 'string' && (args['targetFile'] as string).trim()) {
+    uniqueFiles.add((args['targetFile'] as string).trim());
   }
 
   const workspaceIds = Array.isArray(args?.['workspaceIds'])
     ? (args['workspaceIds'] as string[])
     : undefined;
 
-  // 3. For every file involved, compute target file token count (sum of all files)
   let targetFilesTotalTokens = 0;
   const fileBreakdown: Array<{ file: string; tokens: number; onDisk: boolean }> = [];
 
@@ -185,9 +157,16 @@ export function calculateTokenMetrics(
       try {
         const stat = fs.statSync(resolved);
         if (stat.isFile()) {
-          const content = fs.readFileSync(resolved, 'utf8');
-          fileTokens = Math.max(1, Math.ceil(content.length / 4));
-          onDisk = true;
+          const cached = fileTokenCache.get(resolved);
+          if (cached && cached.mtime === stat.mtimeMs) {
+            fileTokens = cached.tokens;
+            onDisk = true;
+          } else {
+            const content = fs.readFileSync(resolved, 'utf8');
+            fileTokens = Math.max(1, Math.ceil(content.length / 4));
+            fileTokenCache.set(resolved, { mtime: stat.mtimeMs, tokens: fileTokens });
+            onDisk = true;
+          }
         }
       } catch {
         // Fallback to estimation below
@@ -195,7 +174,6 @@ export function calculateTokenMetrics(
     }
 
     if (!onDisk) {
-      // Find candidate slices for this file to estimate its realistic full file size
       const matchingCandidates = (
         parsedData?.candidates ||
         parsedData?.impactCandidates ||
@@ -208,8 +186,6 @@ export function calculateTokenMetrics(
         0
       );
       const snippetTokens = Math.ceil(snippetChars / 4);
-
-      // Typical slice is ~15-25% of a complete target source file
       fileTokens = Math.max(1600, snippetTokens > 0 ? snippetTokens * 5 : 2400);
     }
 
@@ -217,21 +193,17 @@ export function calculateTokenMetrics(
     fileBreakdown.push({ file: fp, tokens: fileTokens, onDisk });
   }
 
-  // 4. Fallback for metadata-only or non-file operations
   if (uniqueFiles.size === 0) {
     switch (tool) {
       case 'backend_health': {
-        // Diagnoses 5 upstream providers without dumping 5 raw CLI/HTTP outputs
         targetFilesTotalTokens = 650;
         break;
       }
       case 'record_decision': {
-        // Formatted decision avoids manual ADR scaffolding and disk operations
         targetFilesTotalTokens = 950;
         break;
       }
       case 'explain_context': {
-        // Ranking explanation avoids dumping all candidate graph and vector matrices
         targetFilesTotalTokens = 1800;
         break;
       }
@@ -242,7 +214,6 @@ export function calculateTokenMetrics(
     }
   }
 
-  // 5. Calculate Token Saving difference
   const tokensSaved = Math.max(0, targetFilesTotalTokens - mcpResponseTokens);
   const reductionPct = targetFilesTotalTokens > 0
     ? Number(((tokensSaved / targetFilesTotalTokens) * 100).toFixed(1))
@@ -304,73 +275,60 @@ export function formatArgsSummary(tool: string, args: Record<string, unknown> | 
     }
     case 'backend_health':
       return 'all_providers: true';
+    case 'search_and_replace':
+    case 'replace_in_file':
+    case 'patch_file': {
+      const file = String(args['targetFile'] || args['file'] || 'file');
+      const chunks = Array.isArray(args['replacements']) ? args['replacements'].length : 1;
+      const dry = args['dryRun'] ? ' [dry-run]' : '';
+      return `file: "${file.slice(0, 30)}", chunks: ${chunks}${dry}`;
+    }
     default:
       return JSON.stringify(args).slice(0, 50);
   }
 }
 
 /**
- * Emits tool execution events across filesystem stores and HTTP extension bridges.
+ * Asynchronously emits tool execution events without blocking the main event loop.
  */
 export async function emitToolExecutionEvent(event: ToolExecutionEvent): Promise<void> {
   const line = JSON.stringify(event) + '\n';
   const latestJson = JSON.stringify(event, null, 2);
 
-  // 1. Persist to all accessible candidate telemetry directories
-  for (const dir of getCandidateTelemetryDirs()) {
-    try {
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-      }
-      const eventsFile = path.join(dir, 'events.jsonl');
-      const latestFile = path.join(dir, 'latest.json');
+  const telemetryDir = getCandidateTelemetryDirs()[0] || path.join(getBrokerRoot(), '.data', 'telemetry');
 
-      fs.appendFileSync(eventsFile, line, 'utf8');
-      fs.writeFileSync(latestFile, latestJson, 'utf8');
-
-      // Maintenance: Trim events file if it exceeds 300KB
-      try {
-        const stats = fs.statSync(eventsFile);
-        if (stats.size > 300000) {
-          const content = fs.readFileSync(eventsFile, 'utf8');
-          const lines = content.trim().split('\n');
-          if (lines.length > 200) {
-            fs.writeFileSync(eventsFile, lines.slice(-100).join('\n') + '\n', 'utf8');
-          }
-        }
-      } catch {
-        // Ignore trim failures
-      }
-    } catch {
-      // Continue to next directory if current is unwritable
+  try {
+    if (!fs.existsSync(telemetryDir)) {
+      await fs.promises.mkdir(telemetryDir, { recursive: true });
     }
+    const eventsFile = path.join(telemetryDir, 'events.jsonl');
+    const latestFile = path.join(telemetryDir, 'latest.json');
+
+    await fs.promises.appendFile(eventsFile, line, 'utf8');
+    await fs.promises.writeFile(latestFile, latestJson, 'utf8');
+  } catch {
+    // Non-blocking catch
   }
 
-  // 2. Direct HTTP notification to VS Code Extension Telemetry Bridge (try 127.0.0.1 and localhost)
-  const endpoints = [
-    `http://127.0.0.1:${EXTENSION_PORT}/event`,
-    `http://localhost:${EXTENSION_PORT}/event`
-  ];
+  // Direct HTTP notification to VS Code Extension Telemetry Bridge (non-blocking)
+  const endpoint = `http://127.0.0.1:${EXTENSION_PORT}/event`;
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 400);
 
-  for (const endpoint of endpoints) {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 400);
-
-      fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(event),
-        signal: controller.signal
-      })
-        .then(() => clearTimeout(timeout))
-        .catch(() => clearTimeout(timeout));
-    } catch {
-      // Non-blocking
-    }
+    fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(event),
+      signal: controller.signal
+    })
+      .then(() => clearTimeout(timeout))
+      .catch(() => clearTimeout(timeout));
+  } catch {
+    // Non-blocking
   }
 
-  // 3. Stderr log for terminal / agent console visibility
+  // Stderr log for terminal / agent console visibility
   const filesInfo = event.details?.['filesCount'] ? ` [${event.details['filesCount']} file(s)]` : '';
   const reductionInfo = event.details?.['reductionPct'] ? ` (-${event.details['reductionPct']}%)` : '';
   process.stderr.write(

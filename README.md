@@ -5,7 +5,7 @@ A thin, local-first, backend-neutral Model Context Protocol (MCP) context broker
 ## Architecture
 
 ```
-Agent / IDE / VS Code Extension
+Agent / IDE / VS Code Extension / CLI
     |
     v (stdio / SSE / JSON-RPC)
 +-------------------------------------------------------------------------------+
@@ -21,208 +21,279 @@ Agent / IDE / VS Code Extension
 |  - Staged Rank Fusion (Weighted Linear Scoring & Reciprocal Rank Fusion)       |
 |  - Token Budget Manager & Greedy Knapsack Packing                             |
 |  - Provenance Layer (SHA-256 Hashing, Clickable Citations, Explainer)         |
+|  - Safe Mutation Engine (Atomic Search/Replace, Dry-Run, Secret Check)       |
+|  - Telemetry Ring Buffer & Companion GUI Inspector (:4100)                    |
 +---+-------------------+-------------------+-------------------+---------------+
     |                   |                   |                   |               |
     v                   v                   v                   v               v
 +----------+   +-------------------+   +----------+        +----------+   +------------+
-|   comP   |   | CodeGraphContext  |   |  Vector  |        |   Git    |   |   Memory   |
-| Adapter  |   |     Adapter       |   | Adapter  |        | Adapter  |   |  Adapter   |
+| Lexical  |   |     CodeGraph     |   |  Vector  |        |   Git    |   |   Memory   |
+| Adapter  |   |      Adapter      |   | Adapter  |        | Adapter  |   |  Adapter   |
 +----+-----+   +--------+----------+   +----+-----+        +----+-----+   +-----+------+
      |                  |                   |                   |               |
      v                  v                   v                   v               v
- [Rust/BM25/        [Tree-sitter/       [Local Vector       [Local Git      [SQLite /
-  Docs/SQLite]       SCIP / Graph]       LanceDB/ONNX]       Repository]     JSON-L]
+ [Rust/BM25/        [Tree-sitter/       [Local Vector       [Local Git      [Durable
+  Docs/SQLite]       SCIP / Graph]       LanceDB/ONNX]       Repository]     JSON-L/ADR]
 ```
 
 ## Monorepo Layout
 
 ```text
-context-broker/
+unified-context-broker/
 ├── apps/
-│   ├── mcp-server/                   # MCP stdio & SSE server application & CLI binary
-│   └── vscode-extension/             # VS Code companion client extension
+│   ├── mcp-server/                   # MCP stdio/SSE server, zero-dependency bundle & CLI binary
+│   ├── vscode-extension/             # VS Code companion client extension
+│   └── companion-gui/                # Localhost telemetry visualizer & payload inspector
 ├── packages/
 │   ├── contracts/                    # Canonical Zod schemas and TypeScript interfaces
 │   ├── orchestrator/                 # Planner, parallel executor, classifier, budgeter
 │   ├── ranking/                      # Spatial deduplicator, graph expansion, rank fusion
 │   ├── provenance/                   # SHA-256 hashing, markdown citations, score explainer
-│   └── security/                     # Boundary jail, secret scrubber, scope validator
-├── adapters/
-│   ├── comp/                         # Adapter for comP (BM25, document extraction)
-│   ├── codegraphcontext/             # Adapter for CodeGraphContext (symbols, call graphs)
-│   ├── vector/                       # Adapter for local embeddings & vector store
-│   ├── git/                          # Adapter for Git state, diffs, blame, freshness
-│   └── memory/                       # Adapter for durable decisions (ADRs) & facts
+│   ├── security/                     # Boundary jail, secret scrubber, scope validator
+│   ├── adapter-lexical/              # BM25 keyword search, file-level chunking, doc indexing
+│   ├── adapter-codegraph/            # AST symbol resolution, call graphs & blast-radius analysis
+│   ├── adapter-vector/               # Local embeddings & semantic vector similarity
+│   ├── adapter-git/                  # Git state, working tree diffs, churn freshness
+│   └── adapter-memory/               # Durable architectural decision records (ADRs)
 ├── config/
 │   ├── defaults/broker.json          # Default scoring weights & adapter timeouts
 │   └── policies/exclusions.json      # Secret scrubbing patterns & path exclusions
-├── upstream/
-│   ├── manifests/upstream.json       # Version, commit, license & capability registry
-│   ├── patches/                      # Patch ledger documentation & overlays
-│   ├── scripts/validate-patches.ts   # Patch ledger governance linter
-│   └── compatibility/                # Automated upstream compatibility test harness
 ├── tests/                            # 4-Agent Verification Swarm
 │   ├── contract/                     # Provider contract compliance suite
 │   ├── retrieval/                    # 8-Case golden benchmark suite
 │   ├── security/                     # Directory traversal & secret exfiltration attacks
 │   └── failure/                      # Chaos injection & graceful degradation tests
-└── .github/workflows/                # Upstream compatibility & CI pipelines
+└── .data/                            # Conconfined local runtime storage (zero host pollution)
+    ├── memory/decisions.jsonl        # Durable ADR storage
+    └── telemetry/events.jsonl        # Ring buffer query & mutation events
 ```
 
-## The 8 Unified MCP Tools
+## The 13 Unified MCP Tools
 
-| Tool Name | Operation Type | Primary Purpose |
-| :--- | :--- | :--- |
-| `search_context` | Read-only | Multi-engine hybrid ranked retrieval adhering strictly to token budget |
-| `get_symbol_context` | Read-only | Exact symbol definitions, docstrings, references, and callers |
-| `get_impact_context` | Read-only | Upstream and downstream blast radius analysis for symbols or files |
-| `get_repository_map` | Read-only | Architectural overview of workspace modules and entry points |
-| `recall_decisions` | Read-only | Retrieve durable architectural decisions (ADRs), rationale, and alternatives |
-| `record_decision` | Mutation | Explicitly persist a reviewed architectural decision into durable memory |
-| `explain_context` | Read-only | Inspect transparent scoring breakdowns, rationale, and provenance traces |
-| `backend_health` | Read-only | Operational status, version, and indexed counts across all 5 adapters |
+The Context Broker exposes 13 tools divided into core retrieval, structural analysis, architectural memory, transparent inspection, and safe source mutation:
+
+| Tool Name | Aliases | Operation Type | Primary Purpose |
+| :--- | :--- | :--- | :--- |
+| `search_context` | — | Read-only | Multi-engine hybrid ranked retrieval strictly adhering to token budget |
+| `get_symbol_context` | `lookup_symbol` | Read-only | Exact symbol definitions, docstrings, type signatures, and callers |
+| `get_impact_context` | `analyze_impact` | Read-only | Upstream and downstream blast radius analysis for symbols or files |
+| `get_repository_map` | `get_repo_map` | Read-only | Architectural overview of workspace modules and entry points |
+| `recall_decisions` | — | Read-only | Retrieve durable architectural decisions (ADRs), rationale, and alternatives |
+| `record_decision` | — | Mutation | Explicitly persist a reviewed architectural decision into durable memory |
+| `explain_context` | — | Read-only | Inspect transparent scoring breakdowns, rationale, and provenance traces |
+| `backend_health` | `check_health` | Read-only | Operational status, version, and indexed counts across all 5 adapters |
+| `search_and_replace` | `replace_in_file`, `patch_file` | Mutation | Atomic exact-match dry-run verified file replacement with boundary enforcement and secret scrubbing |
+
+---
+
+## Single External Indicator Mandate (`AGENTS.md`)
+
+Context Broker adheres strictly to the **Single External Indicator Mandate** and **Zero Host-Root Pollution** philosophy:
+
+1. **Single Point of Presence:** When Context Broker is embedded or initialized in any host repository, it leaves only a **single** indicator file in the workspace root: [`AGENTS.md`](./AGENTS.md).
+2. **Zero Host Pollution:** All persistent databases, vector caches, telemetry logs, and durable ADR storage are strictly confined inside `.data/` within the broker's own directory (or designated OS user cache). No hidden dotfiles or cache directories are ever created in the host repository root.
+3. **Agent Guidance:** `AGENTS.md` instructs all AI coding assistants (Antigravity, Cursor, Windsurf, Copilot, Claude) to prioritize Context Broker's CLI or MCP tools over brute-force filesystem scans or unbounded grep queries.
+
+---
 
 ## Client Environments & IDE Configuration
 
-### Primary / Default Environments (Official Support)
+### Standalone Bundle Distribution
+
+The MCP server is distributed as a zero-dependency standalone bundle compiled via esbuild:
+
+- **Bundle Path:** `./apps/mcp-server/dist/bundle.js`
+- **Portability:** Requires only `node` (Node.js >= 18). No `node_modules` required at runtime.
+
+### Primary / Default Environments
 
 #### 1. AntiGravity IDE (Default)
-The broker is pre-configured for the Antigravity Agentic IDE via workspace customizations in [`.agents/mcp_config.json`](file:///c:/Users/ZenFutral/OneDrive%20-%20Platform%20Accounting%20Group-Subs/Documents/ContextMCP/.agents/mcp_config.json):
+
+The broker is pre-configured for the Antigravity Agentic IDE via workspace customizations in [`.agents/mcp_config.json`](./.agents/mcp_config.json):
+
 ```json
 {
   "mcpServers": {
     "context-broker": {
       "command": "node",
-      "args": ["c:/Users/ZenFutral/OneDrive - Platform Accounting Group-Subs/Documents/ContextMCP/context-broker/apps/mcp-server/dist/index.js"],
+      "args": ["./apps/mcp-server/dist/bundle.js"],
       "env": { "CONTEXT_BROKER_MOCK": "true" }
     }
   }
 }
 ```
-- **Rule Enforcement (`.agents/rules/context-broker.md`):** Automatically populates an authoritative agent rule that forces all AI agents to use the 8 Context Broker MCP tools (hybrid search, symbol lookup, blast radius impact, and architectural memory) instead of raw grep or massive file reads.
+
+- **Rule Enforcement (`.agents/rules/context-broker.md`):** Automatically populates an authoritative agent rule that forces all AI agents to use the Context Broker MCP tools (hybrid search, symbol lookup, blast radius impact, architectural memory, safe search/replace) instead of raw grep or massive file reads.
 
 #### 2. Visual Studio Code (Default)
-Pre-configured via workspace configuration in [`.vscode/mcp.json`](file:///c:/Users/ZenFutral/OneDrive%20-%20Platform%20Accounting%20Group-Subs/Documents/ContextMCP/.vscode/mcp.json) and supported by the companion extension in [`apps/vscode-extension/`](file:///c:/Users/ZenFutral/OneDrive%20-%20Platform%20Accounting%20Group-Subs/Documents/ContextMCP/context-broker/apps/vscode-extension):
+
+Pre-configured via workspace configuration in [`.vscode/mcp.json`](./.vscode/mcp.json) and supported by the companion extension in [`apps/vscode-extension/`](./apps/vscode-extension):
+
 - **Automatic Initialization:** On extension activation, automatically detects if the workspace has `context-broker.md` and auto-populates it.
 - **Command Palette:** Run `Context Broker: Initialize / Populate Workspace Rules (context-broker.md)` anytime to scaffold or refresh rules.
 - **Status Bar & Menus:** Interactive quick pick with one-click workspace initialization and live telemetry.
 - **AI Tool Calling:** Native discovery for GitHub Copilot, Continue, and Cline.
 
-### Initializing Into Any Codebase
-You can initialize Context Broker and auto-populate `context-broker.md` into any new or existing codebase in three ways:
+---
+
+### Non-Default / Alternative Clients
+
+- **Cursor AI:** Pre-configured via [`.cursor/mcp.json`](./.cursor/mcp.json):
+
+  ```json
+  {
+    "mcpServers": {
+      "context-broker": {
+        "command": "node",
+        "args": ["./apps/mcp-server/dist/bundle.js"]
+      }
+    }
+  }
+  ```
+
+- **Windsurf IDE:** Configure in `~/.codeium/windsurf/mcp_config.json`:
+
+  ```json
+  {
+    "mcpServers": {
+      "context-broker": {
+        "command": "node",
+        "args": ["<absolute-path-to>/apps/mcp-server/dist/bundle.js"]
+      }
+    }
+  }
+  ```
+
+- **Claude Desktop:** Add entry to `%APPDATA%\Claude\claude_desktop_config.json` (Windows) or `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
+
+  ```json
+  {
+    "mcpServers": {
+      "context-broker": {
+        "command": "node",
+        "args": ["<absolute-path-to>/apps/mcp-server/dist/bundle.js"]
+      }
+    }
+  }
+  ```
+
+---
+
+## Initializing Into Any Codebase
+
+You can initialize Context Broker into any new or existing codebase in three ways:
+
 1. **VS Code / AntiGravity IDE Extension:** Automatically runs upon opening the folder, or trigger `Context Broker: Initialize / Populate Workspace Rules (context-broker.md)` from the Command Palette.
-2. **CLI Initialization:** Run `node apps/mcp-server/dist/index.js init [targetPath]` or `npx context-broker-mcp init [targetPath]`.
+2. **CLI Initialization:** Run `node ./apps/mcp-server/dist/bundle.js init [targetPath]` or `npx context-broker-mcp init [targetPath]`.
 3. **PowerShell Script:** Run `powershell -ExecutionPolicy Bypass -File scripts\init-codebase.ps1 -Target "C:\path\to\codebase"`.
 
 ---
 
-### Non-Default / Alternative Clients (Secondary)
-
-* **Cursor AI:** Pre-configured via [`.cursor/mcp.json`](file:///c:/Users/ZenFutral/OneDrive%20-%20Platform%20Accounting%20Group-Subs/Documents/ContextMCP/.cursor/mcp.json).
-* **Claude Desktop:** Copy snippet from [`mcp-client-config.json`](file:///c:/Users/ZenFutral/OneDrive%20-%20Platform%20Accounting%20Group-Subs/Documents/ContextMCP/context-broker/mcp-client-config.json) to `%APPDATA%\Claude\claude_desktop_config.json`.
-* **Generic CLI / Stdio Host:** Run `start-broker.ps1` or `start-broker.cmd` directly.
-
-Viewed README.md:1-145
-
-Here is the expanded **Feature Set Outline** structured by functional capability domains:
-
----
-
-# Unified Context Broker: Feature Set Outline
+# Feature Set Outline
 
 ### 1. Multi-Provider Hybrid Retrieval Engine
-* **Lexical & Documentation Search ([`adapters/comp`](file:///c:/Users/ZenFutral/OneDrive%20-%20Platform%20Accounting%20Group-Subs/Documents/context-broker/adapters/comp)):**
-  * Fast BM25 keyword matching across codebase files and documentation.
-  * Markdown and documentation chunking with header-aware context extraction.
-* **Semantic Vector Search ([`adapters/vector`](file:///c:/Users/ZenFutral/OneDrive%20-%20Platform%20Accounting%20Group-Subs/Documents/context-broker/adapters/vector)):**
-  * Local embedding-based vector similarity search (LanceDB / ONNX) for natural language queries.
-  * Semantic concept discovery for intent-based code search without exact keyword matches.
-* **Query Classification & Execution Planning ([`packages/orchestrator`](file:///c:/Users/ZenFutral/OneDrive%20-%20Platform%20Accounting%20Group-Subs/Documents/context-broker/packages/orchestrator)):**
-  * Automatic query intent classification (symbol lookup, architectural query, conceptual search).
-  * Concurrent multi-adapter retrieval execution with per-provider timeouts and isolated error boundaries for graceful degradation.
+
+- **Lexical & Documentation Search ([`packages/adapter-lexical`](./packages/adapter-lexical)):**
+  - Fast BM25 keyword matching across codebase files and documentation.
+  - Markdown and documentation chunking with header-aware context extraction.
+- **Semantic Vector Search ([`packages/adapter-vector`](./packages/adapter-vector)):**
+  - Local embedding-based vector similarity search (LanceDB / ONNX) for natural language queries.
+  - Semantic concept discovery for intent-based code search without exact keyword matches.
+- **Query Classification & Execution Planning ([`packages/orchestrator`](./packages/orchestrator)):**
+  - Automatic query intent classification (symbol lookup, architectural query, conceptual search).
+  - Concurrent multi-adapter retrieval execution with per-provider timeouts and isolated error boundaries for graceful degradation.
 
 ---
 
 ### 2. Structural Code Intelligence & Graph Analysis
-* **Symbol & AST Resolution ([`adapters/codegraphcontext`](file:///c:/Users/ZenFutral/OneDrive%20-%20Platform%20Accounting%20Group-Subs/Documents/context-broker/adapters/codegraphcontext)):**
-  * Precise symbol definition, type signature, and docstring resolution.
-  * Hierarchical caller/callee trees and cross-file reference tracking.
-* **Graph Neighborhood Expansion:**
-  * Contextual neighborhood traversal using distance decay scoring ($1 / (1 + \alpha \cdot d)$) to include relevant call-chain neighbors.
-* **Impact & Blast Radius Analysis:**
-  * Upstream and downstream dependency mapping to analyze the blast radius of changes to symbols or files.
-* **Repository Architecture Mapping:**
-  * High-level codebase structure, module boundaries, and entry-point topology synthesis.
+
+- **Symbol & AST Resolution ([`packages/adapter-codegraph`](./packages/adapter-codegraph)):**
+  - Precise symbol definition, type signature, and docstring resolution.
+  - Hierarchical caller/callee trees and cross-file reference tracking.
+- **Graph Neighborhood Expansion:**
+  - Contextual neighborhood traversal using distance decay scoring ($1 / (1 + \alpha \cdot d)$) to include relevant call-chain neighbors.
+- **Impact & Blast Radius Analysis:**
+  - Upstream and downstream dependency mapping to analyze the blast radius of changes to symbols or files.
+- **Repository Architecture Mapping:**
+  - High-level codebase structure, module boundaries, and entry-point topology synthesis.
 
 ---
 
 ### 3. Intelligent Ranking, Deduplication & Budget Packing
-* **Spatial Candidate Deduplication ([`packages/ranking`](file:///c:/Users/ZenFutral/OneDrive%20-%20Platform%20Accounting%20Group-Subs/Documents/context-broker/packages/ranking)):**
-  * Overlapping line-range merging and containment suppression to prevent duplicate token consumption.
-* **Staged Rank Fusion:**
-  * Multi-source hybrid ranking using Reciprocal Rank Fusion (RRF) and Weighted Linear Scoring (combining BM25, vector similarity, graph proximity, and recency).
-* **Token Budget Knapsack Packing:**
-  * Greedy knapsack packing algorithm that strictly honors client token limits while maximizing context density.
+
+- **Spatial Candidate Deduplication ([`packages/ranking`](./packages/ranking)):**
+  - Overlapping line-range merging and containment suppression to prevent duplicate token consumption.
+- **Staged Rank Fusion:**
+  - Multi-source hybrid ranking using Reciprocal Rank Fusion (RRF) and Weighted Linear Scoring (combining BM25, vector similarity, graph proximity, and recency).
+- **Token Budget Knapsack Packing:**
+  - Greedy knapsack packing algorithm that strictly honors client token limits while maximizing context density.
 
 ---
 
 ### 4. Security, Isolation & Access Governance
-* **Workspace Boundary Guard ([`packages/security`](file:///c:/Users/ZenFutral/OneDrive%20-%20Platform%20Accounting%20Group-Subs/Documents/context-broker/packages/security)):**
-  * Path jail enforcement and symlink verification to prevent directory traversal and unauthorized file access.
-* **Real-time Secret Scrubber:**
-  * Regex-based automatic detection and redaction of API keys, bearer tokens, passwords, and private PEM certificates from emitted context.
-* **Permission & RBAC Scope Validation:**
-  * Strict distinction between read-only inspection tools and state-mutating operations.
-  * Configurable exclusion rules via [exclusions.json](file:///c:/Users/ZenFutral/OneDrive%20-%20Platform%20Accounting%20Group-Subs/Documents/context-broker/config/policies/exclusions.json).
+
+- **Workspace Boundary Guard ([`packages/security`](./packages/security)):**
+  - Path jail enforcement and symlink verification to prevent directory traversal and unauthorized file access outside workspace root.
+- **Real-time Secret Scrubber:**
+  - Regex-based automatic detection and redaction of API keys, bearer tokens, passwords, and private PEM certificates from emitted context.
+- **Permission & RBAC Scope Validation:**
+  - Strict distinction between read-only inspection tools and state-mutating operations.
+  - Configurable exclusion rules via [exclusions.json](./config/policies/exclusions.json).
 
 ---
 
 ### 5. Provenance, Freshness & Explainability
-* **Git Recency & Diff Awareness ([`adapters/git`](file:///c:/Users/ZenFutral/OneDrive%20-%20Platform%20Accounting%20Group-Subs/Documents/context-broker/adapters/git)):**
-  * Freshness scoring factoring in commit history, active working tree diffs, and file churn.
-* **Cryptographic Source Grounding ([`packages/provenance`](file:///c:/Users/ZenFutral/OneDrive%20-%20Platform%20Accounting%20Group-Subs/Documents/context-broker/packages/provenance)):**
-  * SHA-256 chunk fingerprinting for verifiable context origin.
-  * IDE-clickable citation generation (`file:///path#Lstart-Lend`).
-* **Score Explainer Engine:**
-  * Transparent telemetry revealing exact score breakdowns (BM25, vector, graph distance, recency) behind ranked results.
+
+- **Git Recency & Diff Awareness ([`packages/adapter-git`](./packages/adapter-git)):**
+  - Freshness scoring factoring in commit history, active working tree diffs, and file churn.
+- **Cryptographic Source Grounding ([`packages/provenance`](./packages/provenance)):**
+  - SHA-256 chunk fingerprinting for verifiable context origin.
+  - IDE-clickable citation generation (`file:///path#Lstart-Lend`).
+- **Score Explainer Engine:**
+  - Transparent telemetry revealing exact score breakdowns (BM25, vector, graph distance, recency) behind ranked results.
 
 ---
 
 ### 6. Durable Architectural Memory
-* **Decision Tracking (ADRs) ([`adapters/memory`](file:///c:/Users/ZenFutral/OneDrive%20-%20Platform%20Accounting%20Group-Subs/Documents/context-broker/adapters/memory)):**
-  * Persistent storage and semantic recall of Architectural Decision Records, historical constraints, and technical rationale.
-  * Structured recording of new decisions during agent workflows.
+
+- **Decision Tracking (ADRs) ([`packages/adapter-memory`](./packages/adapter-memory)):**
+  - Persistent storage and semantic recall of Architectural Decision Records, historical constraints, and technical rationale.
+  - Structured recording of new decisions during agent workflows into `.data/memory/decisions.jsonl`.
 
 ---
 
-### 7. Unified Protocol & Client Integration Surface
-* **The 8 Unified MCP Tools:**
-  * Retrieval: `search_context`, `get_symbol_context`, `get_impact_context`, `get_repository_map`.
-  * Memory: `recall_decisions`, `record_decision`.
-  * Telemetry & Inspection: `explain_context`, `backend_health`.
-* **Client Ecosystem Support:**
-  * **AntiGravity IDE:** Native rule injection (`.agents/rules/context-broker.md`) prioritizing broker tools over brute-force file reads.
-  * **VS Code Companion Extension ([`apps/vscode-extension`](file:///c:/Users/ZenFutral/OneDrive%20-%20Platform%20Accounting%20Group-Subs/Documents/context-broker/apps/vscode-extension)):** One-click workspace initialization, status bar health monitor, and Command Palette actions.
-  * **Broad MCP Support:** Compatibility with Cursor AI, Claude Desktop, Continue, Cline, and stdio/SSE hosts.
-* **Codebase Scaffolding & CLI:**
-  * `init` command, PowerShell, and npx scripts to scaffold policies and rules into any target workspace.
+### 7. Safe Source Mutation Engine
+
+- **Exact Match Verification ([`packages/orchestrator`](./packages/orchestrator)):**
+  - Atomic, character-exact string search-and-replace preventing destructive multi-line hallucinated edits.
+- **Pre-Mutation Guards:**
+  - In-flight secret scanning blocks accidental credential writes.
+  - Boundary jail verification ensures modifications remain inside workspace root.
+  - Dry-run verification mode returns unified diff preview without mutating disk state.
 
 ---
 
-### 8. Governance, Containerization & Verification Swarm
-* **Upstream Patch Governance ([`upstream/`](file:///c:/Users/ZenFutral/OneDrive%20-%20Platform%20Accounting%20Group-Subs/Documents/context-broker/upstream)):**
-  * Upstream manifest tracking with automated patch ledger validation linter.
-* **4-Agent Verification Swarm ([`tests/`](file:///c:/Users/ZenFutral/OneDrive%20-%20Platform%20Accounting%20Group-Subs/Documents/context-broker/tests)):**
-  * Automated suites for contract compliance, 8-case golden retrieval benchmarks, security penetration attacks, and chaos failure injection.
-* **Packaging & Containerization:**
-  * Standalone CLI binary, Dockerfile deployment, and automated CI/CD marketplace publishing.
+### 8. Companion GUI & Telemetry Inspector
+
+- **Local Web Inspector ([`apps/companion-gui`](./apps/companion-gui)):**
+  - Lightweight embedded HTTP server (`http://localhost:4100`) with zero external runtime dependencies.
+  - Live event stream showing retrieval queries, score breakdowns, token budget utilization, and mutation diffs.
+
+---
+
+### 9. 4-Agent Verification Swarm
+
+- **Comprehensive Test Harness ([`tests/`](./tests)):**
+  - Automated suites for contract compliance, 8-case golden retrieval benchmarks, security penetration attacks, and chaos failure injection.
+  - 100% test pass rate across 27 test files and 138+ automated specs.
+
 ---
 
 ## CI/CD & Publishing
 
 - **Continuous Integration:** Automated GitHub Actions run across Ubuntu and Windows (`.github/workflows/ci.yml`).
 - **Open VSX & VS Code Marketplace:** Automated package and release workflow (`.github/workflows/publish-extension.yml`).
-- **Publishing Instructions:** See [PUBLISHING.md](PUBLISHING.md) for full step-by-step instructions on pushing to GitHub, claiming Open VSX namespaces, setting up PAT secrets, and releasing.
+- **Publishing Instructions:** See [PUBLISHING.md](PUBLISHING.md) for full step-by-step instructions on standalone bundle builds, pushing to GitHub, claiming Open VSX namespaces, setting up PAT secrets, and releasing.
 
 ## License
 

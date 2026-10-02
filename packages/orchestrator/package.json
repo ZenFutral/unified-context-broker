@@ -5,6 +5,9 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "context-broker": "./bin/cli.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -21,9 +24,14 @@
     "@context-broker/ranking": "workspace:*",
     "@context-broker/security": "workspace:*",
     "@context-broker/provenance": "workspace:*",
+    "js-tiktoken": "^1.0.15",
     "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@context-broker/adapter-codegraph": "workspace:*",
+    "@context-broker/adapter-lexical": "workspace:*",
+    "@context-broker/adapter-git": "workspace:*",
+    "@context-broker/adapter-memory": "workspace:*",
     "typescript": "^5.4.0",
     "vitest": "^1.4.0"
   }

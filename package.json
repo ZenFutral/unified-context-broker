@@ -1,5 +1,5 @@
 {
-  "name": "context-broker-monorepo",
+  "name": "unified-context-broker",
   "version": "0.1.0",
   "private": true,
   "description": "Thin, local-first MCP Context Broker with replaceable upstream adapters",
@@ -18,7 +18,12 @@
     "test:watch": "vitest --workspace vitest.workspace.ts",
     "typecheck": "turbo run build",
     "lint": "turbo run build",
-    "package:extension": "pnpm --filter unified-context-broker run package",
+    "broker": "node apps/mcp-server/dist/index.js",
+    "dashboard": "node apps/dashboard/dist/server.js",
+    "setup": "python bootstrap.py",
+    "cli:search": "node apps/mcp-server/dist/cli/search.js",
+    "cli:digest": "node apps/mcp-server/dist/cli/digest.js",
+    "package:extension": "pnpm --filter ./apps/vscode-extension run package",
     "clean": "turbo run clean && rimraf node_modules"
   },
   "devDependencies": {

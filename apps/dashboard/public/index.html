@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Context Broker - Agent Monitoring & Sandbox Dashboard</title>
-  <meta name="description" content="Real-time telemetry, adapter health monitoring, and query sandbox for the Unified Context Broker MCP Server">
+  <title>Context Broker — Operational Telemetry & Monitoring Console</title>
+  <meta name="description" content="Dedicated monitoring, live timestamped activity logging, request/response payload inspection, and token efficiency metrics for the Unified Context Broker MCP Server">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -16,7 +16,7 @@
     <aside class="sidebar">
       <div class="brand">
         <div class="brand-icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
             <polyline points="2 17 12 22 22 17"></polyline>
             <polyline points="2 12 12 17 22 12"></polyline>
@@ -29,17 +29,28 @@
       </div>
 
       <nav class="nav-menu">
-        <button class="nav-item active" data-tab="overview" id="nav-overview">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+        <button class="nav-item active" data-tab="logs" id="nav-logs">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="4 17 10 11 4 5"></polyline>
+            <line x1="12" y1="19" x2="20" y2="19"></line>
+          </svg>
+          Activity Log
+        </button>
+        <button class="nav-item" data-tab="overview" id="nav-overview">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
           Adapter Health
         </button>
-        <button class="nav-item" data-tab="sandbox" id="nav-sandbox">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-          Query Sandbox
-        </button>
         <button class="nav-item" data-tab="memory" id="nav-memory">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
-          ADR Memory (Decisions)
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+          </svg>
+          ADR Memory
         </button>
       </nav>
 
@@ -47,115 +58,137 @@
         <div class="runtime-card">
           <div class="runtime-status">
             <span class="status-dot pulse-green"></span>
-            <span id="runtime-mode-label">Mock Mode Active</span>
+            <span id="runtime-mode-label">Monitoring Active</span>
           </div>
-          <p class="runtime-sub">Connected via stdio/HTTP</p>
+          <p class="runtime-sub" id="runtime-sub-label">Pure Observability Mode</p>
         </div>
       </div>
     </aside>
 
     <!-- Main Content Area -->
     <main class="main-content">
-      <!-- Header -->
+      <!-- Top Header -->
       <header class="top-header">
         <div class="header-title">
-          <h1 id="page-title">Adapter Health & Telemetry</h1>
-          <p id="page-desc">Live status, diagnostics, and item counts across all 5 registered upstream providers</p>
+          <h1 id="page-title">Live Activity & Telemetry Log</h1>
+          <p id="page-desc">Real-time timestamped audit log of all tool invocations, token savings, and request/response payloads</p>
         </div>
         <div class="header-actions">
-          <button class="btn btn-secondary" id="refresh-health-btn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
-            Refresh Health
+          <label class="auto-refresh-toggle" title="Toggle automatic 3-second live refresh">
+            <input type="checkbox" id="auto-refresh-checkbox" checked>
+            <span class="toggle-slider"></span>
+            <span class="toggle-label" id="auto-refresh-label">Live Sync (3s)</span>
+          </label>
+          <button class="btn btn-secondary" id="manual-refresh-btn" title="Refresh logs immediately">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <polyline points="1 20 1 14 7 14"></polyline>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+            Refresh
           </button>
         </div>
       </header>
 
-      <!-- TAB 1: OVERVIEW & HEALTH -->
-      <section class="tab-pane active" id="tab-overview">
-        <div class="stats-row">
-          <div class="stat-box">
-            <span class="stat-label">Active Providers</span>
-            <span class="stat-value" id="active-providers-count">5 / 5</span>
-            <span class="stat-badge success">All Operational</span>
+      <!-- Global Token Savings & Metrics Summary -->
+      <section class="stats-row">
+        <div class="stat-box">
+          <span class="stat-label">Cumulative Tokens Saved</span>
+          <span class="stat-value" id="stat-tokens-saved">+0</span>
+          <span class="stat-badge success" id="stat-reduction-pct">89.2% Avg Reduction</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">Total Agent Operations</span>
+          <span class="stat-value" id="stat-total-ops">0</span>
+          <span class="stat-badge info" id="stat-ops-badge">Live Monitored</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">Average Execution Latency</span>
+          <span class="stat-value" id="stat-avg-latency">0ms</span>
+          <span class="stat-badge purple">Sub-20ms SLA</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">System Operational Health</span>
+          <span class="stat-value" id="stat-health-label">100%</span>
+          <span class="stat-badge teal">All Adapters Healthy</span>
+        </div>
+      </section>
+
+      <!-- TAB 1: ACTIVITY LOG STREAM (PRIMARY) -->
+      <section class="tab-pane active" id="tab-logs">
+        <div class="table-toolbar card">
+          <div class="toolbar-left">
+            <div class="filter-group">
+              <label for="tool-filter">Filter Tool:</label>
+              <select id="tool-filter" class="input-field select-field">
+                <option value="">All Tools (13 Canonical & Aliases)</option>
+                <option value="search_context">search_context</option>
+                <option value="lookup_symbol">lookup_symbol / get_symbol_context</option>
+                <option value="search_and_replace">search_and_replace / replace_in_file</option>
+                <option value="patch_file">patch_file</option>
+                <option value="get_impact_context">get_impact_context / analyze_impact</option>
+                <option value="get_repository_map">get_repository_map / get_repo_map</option>
+                <option value="recall_decisions">recall_decisions</option>
+                <option value="record_decision">record_decision</option>
+                <option value="explain_context">explain_context</option>
+                <option value="backend_health">backend_health / check_health</option>
+              </select>
+            </div>
+            <div class="search-group">
+              <input type="text" id="log-search-input" class="input-field" placeholder="Search target file, query, args, or event ID...">
+            </div>
           </div>
-          <div class="stat-box">
-            <span class="stat-label">Supported Unified Tools</span>
-            <span class="stat-value">8</span>
-            <span class="stat-badge info">Full MCP Surface</span>
-          </div>
-          <div class="stat-box">
-            <span class="stat-label">Default Token Budget</span>
-            <span class="stat-value">4,000</span>
-            <span class="stat-badge purple">Knapsack Packed</span>
-          </div>
-          <div class="stat-box">
-            <span class="stat-label">Primary Environment</span>
-            <span class="stat-value">VSCode & AntiGravity</span>
-            <span class="stat-badge teal">Default Configured</span>
+          <div class="toolbar-right">
+            <span class="count-badge" id="log-count-badge">Showing 0 operations</span>
           </div>
         </div>
 
-        <h2 class="section-title">Registered Upstream Adapters</h2>
+        <div class="table-container card">
+          <table class="activity-table" id="activity-table">
+            <thead>
+              <tr>
+                <th style="width: 220px">Timestamp</th>
+                <th style="width: 170px">Tool Name</th>
+                <th style="width: 140px">Status & Latency</th>
+                <th style="width: 180px">Token Savings</th>
+                <th>Target / Query</th>
+                <th style="width: 100px; text-align: right">Payload</th>
+              </tr>
+            </thead>
+            <tbody id="activity-table-body">
+              <tr>
+                <td colspan="6" class="loading-state">
+                  <div class="loading-spinner"></div>
+                  <span>Streaming activity logs from broker telemetry...</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- TAB 2: ADAPTER HEALTH (PURE OBSERVABILITY) -->
+      <section class="tab-pane" id="tab-overview">
+        <div class="overview-header">
+          <h2 class="section-title">Registered Context Providers</h2>
+          <span class="info-pill">Zero Debugger Dumps — Pure Operational Status</span>
+        </div>
         <div class="adapter-grid" id="adapter-grid">
-          <!-- Dynamic Adapter Cards Injected Here -->
-          <div class="loading-spinner">Loading adapter telemetry...</div>
-        </div>
-      </section>
-
-      <!-- TAB 2: QUERY SANDBOX -->
-      <section class="tab-pane" id="tab-sandbox">
-        <div class="sandbox-container">
-          <div class="sandbox-controls card">
-            <h3>Execute Context Query</h3>
-            <div class="form-group">
-              <label for="query-input">Query String</label>
-              <input type="text" id="query-input" class="input-field" placeholder="e.g. extractCallRecordId, audio streaming buffer, ADR-001..." value="extractCallRecordId">
-            </div>
-
-            <div class="form-row">
-              <div class="form-group">
-                <label for="intent-select">Intent Override (Optional)</label>
-                <select id="intent-select" class="input-field">
-                  <option value="">Auto-Classify (Recommended)</option>
-                  <option value="exact_lookup">exact_lookup (Symbol & CodeGraph)</option>
-                  <option value="semantic_discovery">semantic_discovery (Vector embeddings)</option>
-                  <option value="dependency_analysis">dependency_analysis (Call graph hierarchy)</option>
-                  <option value="impact_analysis">impact_analysis (Downstream blast radius)</option>
-                  <option value="documentation_search">documentation_search (BM25 docs & specs)</option>
-                  <option value="decision_recall">decision_recall (ADR & durable memory)</option>
-                  <option value="hybrid">hybrid (Multi-engine synthesis)</option>
-                </select>
-              </div>
-
-              <div class="form-group">
-                <label for="budget-input">Token Budget: <span id="budget-val">4000</span></label>
-                <input type="range" id="budget-input" min="1000" max="16000" step="500" value="4000" class="range-slider">
-              </div>
-            </div>
-
-            <button class="btn btn-primary" id="run-query-btn">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-              Execute Orchestrated Query
-            </button>
-          </div>
-
-          <!-- Query Result Inspection -->
-          <div class="sandbox-results" id="sandbox-results">
-            <div class="empty-state">
-              <p>Execute a query above to see multi-engine retrieval, rank fusion, and token knapsack packing.</p>
-            </div>
+          <div class="loading-state">
+            <div class="loading-spinner"></div>
+            <span>Fetching operational status...</span>
           </div>
         </div>
       </section>
 
-      <!-- TAB 3: ADR MEMORY -->
+      <!-- TAB 3: ADR MEMORY INSPECTION (READ-ONLY) -->
       <section class="tab-pane" id="tab-memory">
         <div class="memory-header card">
           <div class="memory-search">
             <input type="text" id="memory-search-input" class="input-field" placeholder="Search architectural decisions, rationale, components...">
-            <button class="btn btn-secondary" id="search-memory-btn">Filter</button>
+            <button class="btn btn-secondary" id="search-memory-btn">Search Records</button>
           </div>
-          <button class="btn btn-primary" id="open-record-modal-btn">+ Record New Decision</button>
+          <span class="info-pill">Durable ADR Memory (.data/memory/decisions.jsonl)</span>
         </div>
 
         <div class="memory-grid" id="memory-grid">
@@ -165,39 +198,86 @@
     </main>
   </div>
 
-  <!-- Record Decision Modal -->
-  <div class="modal-backdrop" id="record-modal">
-    <div class="modal-card">
+  <!-- INTERACTIVE REQUEST & RESPONSE PAYLOAD INSPECTOR MODAL (Task 7.3) -->
+  <div class="modal-backdrop" id="payload-modal" aria-hidden="true">
+    <div class="modal-card payload-modal-card">
       <div class="modal-header">
-        <h3>Record Architectural Decision (ADR)</h3>
-        <button class="btn-close" id="close-modal-btn">&times;</button>
+        <div class="modal-title-wrap">
+          <span class="tool-badge-large" id="modal-tool-badge">search_context</span>
+          <div>
+            <h3 id="modal-title">Tool Execution Payload Inspector</h3>
+            <div class="modal-meta-row">
+              <span class="modal-meta-item" id="modal-timestamp">2026-10-02 05:14:22.124</span>
+              <span class="modal-meta-item" id="modal-latency-badge">14ms</span>
+              <span class="modal-status-badge success" id="modal-status-badge">SUCCESS</span>
+              <span class="modal-meta-item text-muted" id="modal-event-id">mcp-101</span>
+            </div>
+          </div>
+        </div>
+        <button class="btn-close" id="close-payload-modal-btn" title="Close inspector">&times;</button>
       </div>
-      <form id="record-decision-form">
-        <div class="form-group">
-          <label for="adr-title">Decision Title</label>
-          <input type="text" id="adr-title" class="input-field" required placeholder="e.g. Adopt SQLite for Local Metadata">
+
+      <!-- Modal Tab Controls -->
+      <div class="modal-tabs">
+        <button class="modal-tab-btn active" id="modal-tab-request-btn" data-target="modal-pane-request">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+          </svg>
+          Request Payload (Arguments)
+        </button>
+        <button class="modal-tab-btn" id="modal-tab-response-btn" data-target="modal-pane-response">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          Response Payload (Returned Output)
+        </button>
+      </div>
+
+      <!-- Tab 1: Request Payload View -->
+      <div class="modal-pane active" id="modal-pane-request">
+        <div class="payload-actions-bar">
+          <span class="payload-desc">Exact arguments received by the MCP tool invocation</span>
+          <button class="btn btn-secondary btn-copy" id="copy-request-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            Copy Request JSON
+          </button>
         </div>
-        <div class="form-group">
-          <label for="adr-decision">What was decided?</label>
-          <textarea id="adr-decision" class="input-field" rows="2" required placeholder="State the architectural choice made..."></textarea>
+        <div class="code-viewport">
+          <pre><code id="modal-request-content">{}</code></pre>
         </div>
-        <div class="form-group">
-          <label for="adr-rationale">Rationale & Justification</label>
-          <textarea id="adr-rationale" class="input-field" rows="2" required placeholder="Explain why this option was chosen over alternatives..."></textarea>
+      </div>
+
+      <!-- Tab 2: Response Payload View -->
+      <div class="modal-pane" id="modal-pane-response">
+        <div class="payload-actions-bar">
+          <span class="payload-desc">Structured output returned to the agent host runtime</span>
+          <button class="btn btn-secondary btn-copy" id="copy-response-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            Copy Response JSON
+          </button>
         </div>
-        <div class="form-group">
-          <label for="adr-alternatives">Rejected Alternatives (Comma-separated)</label>
-          <input type="text" id="adr-alternatives" class="input-field" placeholder="e.g. Cloud Vector DB, Monolithic fork">
+        <div class="code-viewport">
+          <pre><code id="modal-response-content">{}</code></pre>
         </div>
-        <div class="form-group">
-          <label for="adr-components">Affected Components (Comma-separated)</label>
-          <input type="text" id="adr-components" class="input-field" placeholder="e.g. adapters/comp, packages/ranking">
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="modal-footer">
+        <div class="modal-token-metrics" id="modal-token-metrics">
+          <span class="metric-chip">Tokens Saved: <strong id="modal-metric-saved">0</strong></span>
+          <span class="metric-chip">Efficiency: <strong id="modal-metric-pct">0%</strong></span>
         </div>
-        <div class="modal-actions">
-          <button type="button" class="btn btn-secondary" id="cancel-modal-btn">Cancel</button>
-          <button type="submit" class="btn btn-primary">Save to Durable Memory</button>
-        </div>
-      </form>
+        <button class="btn btn-secondary" id="modal-close-footer-btn">Close</button>
+      </div>
     </div>
   </div>
 

@@ -4,8 +4,13 @@ import {
   ContextCandidateSchema,
   generateCandidateId,
   ContextPackageSchema,
-  HealthResultSchema,
-  BrokerConfigSchema
+  BrokerConfigSchema,
+  PolicyExclusionsSchema,
+  loadBrokerConfig,
+  loadPolicyExclusions,
+  DEFAULT_CONTEXT_BROKER_RULE,
+  DecisionInputSchema,
+  DecisionRecordSchema
 } from '../src/index.js';
 
 describe('Canonical Contracts Validation', () => {
@@ -108,5 +113,53 @@ describe('Canonical Contracts Validation', () => {
     expect(parsed.adapters.comp.enabled).toBe(true);
     expect(parsed.scoring.lexicalWeight).toBe(0.30);
     expect(parsed.scoring.semanticWeight).toBe(0.35);
+  });
+
+  it('exports authoritative DEFAULT_CONTEXT_BROKER_RULE template', () => {
+    expect(DEFAULT_CONTEXT_BROKER_RULE).toContain('Context Broker MCP — Tool Usage & Discovery Enforcement');
+    expect(DEFAULT_CONTEXT_BROKER_RULE).toContain('search_context');
+    expect(DEFAULT_CONTEXT_BROKER_RULE).toContain('get_symbol_context');
+    expect(DEFAULT_CONTEXT_BROKER_RULE).toContain('get_impact_context');
+  });
+
+  it('validates PolicyExclusionsSchema and loads policy exclusions', () => {
+    const defaultPolicy = PolicyExclusionsSchema.parse({});
+    expect(defaultPolicy.pathExclusions).toContain('**/.env*');
+    expect(defaultPolicy.pathExclusions).toContain('**/node_modules/**');
+    expect(defaultPolicy.secretScrubbingPatterns.length).toBeGreaterThan(0);
+
+    const loadedPolicy = loadPolicyExclusions();
+    expect(loadedPolicy.pathExclusions).toBeDefined();
+    expect(loadedPolicy.secretScrubbingPatterns).toBeDefined();
+  });
+
+  it('loads broker configuration using loadBrokerConfig()', () => {
+    const loadedConfig = loadBrokerConfig();
+    expect(loadedConfig.serverName).toBe('context-broker-mcp');
+    expect(loadedConfig.defaultTokenBudget).toBe(4000);
+  });
+
+  it('validates DecisionInputSchema and DecisionRecordSchema', () => {
+    const input = {
+      title: 'Adopt Layer 0 Contracts',
+      decision: 'Use capability interfaces',
+      rationale: 'Avoid class downcasting',
+      rejectedAlternatives: ['Generic adapter casts'],
+      affectedComponents: ['orchestrator', 'mcp-server']
+    };
+
+    const parsedInput = DecisionInputSchema.safeParse(input);
+    expect(parsedInput.success).toBe(true);
+
+    const record = {
+      ...input,
+      id: 'adr-001',
+      timestamp: new Date().toISOString(),
+      author: 'Architect',
+      tags: ['layer0', 'contracts']
+    };
+
+    const parsedRecord = DecisionRecordSchema.safeParse(record);
+    expect(parsedRecord.success).toBe(true);
   });
 });

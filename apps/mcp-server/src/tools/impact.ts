@@ -1,5 +1,4 @@
 import { ContextOrchestrator } from '@context-broker/orchestrator';
-import { CodeGraphContextAdapter } from '@context-broker/adapter-codegraphcontext';
 
 export const getImpactContextToolDefinition = {
   name: 'get_impact_context',
@@ -40,21 +39,8 @@ export async function handleGetImpactContext(
     };
   }
 
-  const graphAdapter = orchestrator.getRegistry().get('codegraphcontext') as CodeGraphContextAdapter | undefined;
-  if (!graphAdapter) {
-    return {
-      isError: true,
-      content: [
-        {
-          type: 'text',
-          text: 'CodeGraphContext adapter is not registered or is currently disabled.'
-        }
-      ]
-    };
-  }
-
   try {
-    const candidates = await graphAdapter.getImpactContext(
+    const pkg = await orchestrator.executeImpactAnalysis(
       params.symbol,
       params.filePath,
       params.depth ?? 2
@@ -67,8 +53,9 @@ export async function handleGetImpactContext(
           text: JSON.stringify({
             target: params.symbol || params.filePath,
             depth: params.depth ?? 2,
-            affectedComponentsCount: candidates.length,
-            impactCandidates: candidates
+            affectedComponentsCount: pkg.candidates.length,
+            impactCandidates: pkg.candidates,
+            estimatedTokens: pkg.estimatedTokens
           }, null, 2)
         }
       ]

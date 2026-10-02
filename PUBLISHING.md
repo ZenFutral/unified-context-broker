@@ -1,114 +1,151 @@
-# Publishing Guide: GitHub & Open VSX
+# Publishing & Standalone Distribution Guide
 
-This guide details how to upload the **Unified Context Broker** monorepo to GitHub and publish the **VS Code Companion Extension** to the **Open VSX Registry** (and optionally the VS Code Marketplace).
+This guide documents the build, bundling, zero-dependency distribution, and marketplace release processes for the **Unified Context Broker MCP Server** and companion IDE extensions.
 
 ---
 
-## 1. Uploading to GitHub
+## 1. Architecture & Packaging Overview
+
+Context Broker is engineered as a zero-daemon, zero-footprint MCP server. It can be distributed in three distinct formats:
+
+1. **Standalone Zero-Dependency Node.js Bundle (`apps/mcp-server/dist/bundle.js`)**:
+   - Single pre-bundled ESM file with all dependencies and adapters inlined.
+   - Requires only a Node.js runtime (`>= 20.0.0`) on the target machine.
+   - Ideal for direct inclusion in Cursor, Claude Desktop, Windsurf, Antigravity IDE, or CI environments.
+2. **Monorepo Source / CLI (`packages/orchestrator/bin/cli.js`)**:
+   - Zero-daemon CLI for scripted CI and agent execution without starting an MCP server.
+3. **VS Code Extension (`.vsix`)**:
+   - Packaged extension for Visual Studio Code, VSCodium, Eclipse Theia, and Antigravity IDE.
+
+---
+
+## 2. Building the Standalone Bundle
+
+The standalone bundle bundles all TypeScript source code, Zod contracts, ranking engines, AST analyzers, and upstream adapters into a single portable JavaScript bundle.
+
+### Build Command
+```bash
+# Build all monorepo packages and standalone bundle
+pnpm run build
+
+# Or directly bundle apps/mcp-server
+pnpm --filter @context-broker/mcp-server run bundle
+```
+
+Under the hood, this executes `esbuild`:
+```bash
+esbuild apps/mcp-server/src/index.ts \
+  --bundle \
+  --platform=node \
+  --target=node20 \
+  --format=esm \
+  --outfile=apps/mcp-server/dist/bundle.js
+```
+
+### Bundle Output
+- Location: `apps/mcp-server/dist/bundle.js`
+- Size: ~6.1 MB (includes bundled tokenizer, schemas, and in-memory fallback indexes)
+- External Dependencies: **None** (zero `node_modules` required at runtime).
+
+---
+
+## 3. Host Runtime Configurations
+
+### 1. Antigravity IDE & Gemini CLI
+Add to `.agents/mcp_config.json`:
+```json
+{
+  "mcpServers": {
+    "context-broker": {
+      "command": "node",
+      "args": ["./apps/mcp-server/dist/bundle.js"],
+      "env": {
+        "CONTEXT_BROKER_MOCK": "false"
+      }
+    }
+  }
+}
+```
+
+### 2. Visual Studio Code & Claude Desktop
+Add to `.vscode/mcp.json` or `%APPDATA%\Claude\claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "context-broker": {
+      "command": "node",
+      "args": ["./apps/mcp-server/dist/bundle.js"]
+    }
+  }
+}
+```
+
+### 3. Cursor AI & Windsurf
+Add to `.cursor/mcp.json` or `.windsurf/mcp.json`:
+```json
+{
+  "mcpServers": {
+    "context-broker": {
+      "command": "node",
+      "args": ["./apps/mcp-server/dist/bundle.js"]
+    }
+  }
+}
+```
+
+---
+
+## 4. Packaging the VS Code Extension (`.vsix`)
+
+The companion extension provides telemetry dashboards, status bar indicators, and automatic rule scaffolding.
 
 ### Prerequisites
-- [Git](https://git-scm.com/) installed on your machine (`C:\Users\<user>\AppData\Local\Programs\Git\cmd\git.exe` on Windows).
-- A GitHub account.
+- Node.js `>= 20.0.0`
+- pnpm `>= 9.0.0`
+- `@vscode/vsce`
 
-### Step 1: Create a New Repository on GitHub
-1. Go to [github.com/new](https://github.com/new).
-2. Set Repository Name: `context-broker` (or your preferred name).
-3. Set Visibility: **Public** (recommended for Open VSX companions) or Private.
-4. Leave **"Initialize with README, .gitignore, and license"** unchecked (they already exist in this repository).
-5. Click **Create repository**.
+### Packaging Steps
+```bash
+# 1. Ensure all packages are built
+pnpm run build
 
-### Step 2: Initialize & Push Code
-Open a terminal in the `context-broker` directory and execute:
+# 2. Package the extension .vsix
+pnpm run package:extension
+```
 
-```powershell
-# Ensure git is in your PATH
-$env:PATH += ";C:\Users\ZenFutral\AppData\Local\Programs\Git\cmd"
+This compiles the extension and outputs `apps/vscode-extension/unified-context-broker-0.1.0.vsix`.
 
-# Initialize git repository
-git init -b main
-
-# Stage all files (the curated .gitignore ensures build caches and node_modules are excluded)
-git add .
-
-# Create initial commit
-git commit -m "feat: initial commit of Unified Context Broker monorepo and VS Code companion"
-
-# Link to your remote GitHub repository (replace with your GitHub username)
-git remote add origin https://github.com/ZenFutral/unified-context-broker.git
-
-# Push to main
-git push -u origin main
+### Testing Local Installation
+```bash
+code --install-extension apps/vscode-extension/unified-context-broker-0.1.0.vsix
 ```
 
 ---
 
-## 2. Publishing Extension to Open VSX
+## 5. Marketplace Publishing
 
-The Open VSX Registry powers open-source VS Code distributions like **VSCodium**, **Gitpod**, **Eclipse Theia**, and **Antigravity IDE**.
-
-### Step 1: Register on Open VSX
-1. Go to [open-vsx.org](https://open-vsx.org).
-2. Sign in with your GitHub account.
-
-### Step 2: Create a Namespace
-1. In Open VSX, publisher names are called **namespaces**.
-2. If using the default namespace in `package.json` (`unified-context-broker`):
-   - Claim or request the `unified-context-broker` namespace via your Open VSX account settings (or change `"publisher": "<your-namespace>"` in [apps/vscode-extension/package.json](file:///apps/vscode-extension/package.json) to match an existing namespace you own).
-3. You can also create a namespace via CLI:
+### Open VSX Registry (Antigravity IDE, VSCodium, Eclipse Theia)
+1. Generate an Open VSX Access Token from [open-vsx.org](https://open-vsx.org).
+2. Set `OVSX_PAT` in your CI environment secrets.
+3. Publish using `ovsx`:
    ```bash
-   npx ovsx create-namespace <your-namespace> -p <YOUR_OVSX_TOKEN>
+   npx ovsx publish apps/vscode-extension/unified-context-broker-0.1.0.vsix -p $OVSX_PAT
    ```
 
-### Step 3: Generate an Access Token (PAT)
-1. Go to your Open VSX profile settings: [open-vsx.org/user-settings/tokens](https://open-vsx.org/user-settings/tokens).
-2. Click **Generate New Token**.
-3. Name it (e.g., `unified-context-broker-ci`).
-4. Copy the generated token.
-
-### Step 4: Option A — Publish Locally via CLI
-To package and publish directly from your workstation:
-
-```powershell
-cd apps/vscode-extension
-
-# 1. Package extension into .vsix
-npx @vscode/vsce package --no-dependencies
-
-# 2. Publish to Open VSX
-npx ovsx publish unified-context-broker-0.1.0.vsix -p <YOUR_OVSX_TOKEN>
-```
-
-### Step 5: Option B — Automated GitHub Actions CI/CD (Recommended)
-This repository includes an automated GitHub Actions workflow at [.github/workflows/publish-extension.yml](file:///.github/workflows/publish-extension.yml).
-
-1. In your GitHub repository:
-   - Navigate to **Settings** > **Secrets and variables** > **Actions**.
-   - Click **New repository secret**.
-   - Name: `OVSX_PAT`
-   - Value: `<YOUR_OVSX_ACCESS_TOKEN>`
-   - (Optional) Name: `VSCE_PAT` if you also wish to cross-publish to the Visual Studio Marketplace.
-2. To trigger a release:
-   - Push a git tag:
-     ```bash
-     git tag v0.1.0
-     git push origin v0.1.0
-     ```
-   - Or go to the **Actions** tab on GitHub, select **Publish VS Code Extension to Open VSX**, and click **Run workflow**.
-3. The workflow will automatically:
-   - Build all monorepo packages.
-   - Run the test suite.
-   - Package the `.vsix` bundle.
-   - Publish to Open VSX.
-   - Create a GitHub Release with the downloadable `.vsix` attached.
+### Visual Studio Marketplace
+1. Generate a Personal Access Token (PAT) with `Marketplace (Manage)` permissions in Azure DevOps.
+2. Set `VSCE_PAT` in your CI environment secrets.
+3. Publish using `vsce`:
+   ```bash
+   npx vsce publish --packagePath apps/vscode-extension/unified-context-broker-0.1.0.vsix -p $VSCE_PAT
+   ```
 
 ---
 
-## 3. Extension Quality Checklist
+## 6. Zero-Pollution Confinement Mandate
 
-Before publishing, verify the following:
+Context Broker enforces strict containment rules to prevent polluting host projects:
 
-- [x] **SPDX License**: `MIT` declared in both root and extension manifests.
-- [x] **Icon**: 128x128 PNG icon (`resources/icon.png`) for marketplace cards.
-- [x] **Zero Runtime Dependency Bloat**: Extension bundles zero unneeded node_modules; runs purely against VS Code and Node APIs.
-- [x] **Exclusions**: Clean `.vscodeignore` omitting source TypeScript and tests from the final `.vsix`.
-- [x] **Repository Links**: Git repository, issue tracker, and homepage metadata mapped in `package.json`.
+- **Isolated Internal Storage**: All operational databases, SQLite indexes, telemetry logs (`events.jsonl`), and durable decision records (`decisions.jsonl`) are strictly confined to `<brokerRoot>/.data/`.
+- **Single External Indicator (`AGENTS.md`)**: The broker never generates loose files or hidden folders in target repositories. Only a single optional directive block in the host's `AGENTS.md` is utilized to instruct AI models to invoke broker tools.
+- **Dry-Run Default for Mutations**: The `search_and_replace` engine defaults to previewing mutations via unified diffs unless explicitly committed, preventing inadvertent modifications.

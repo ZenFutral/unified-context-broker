@@ -24,7 +24,7 @@ Write-Host "`n  === Packaging Context Broker VS Code Companion ===`n" -Foregroun
 # 1. Build extension
 Set-Location $ProjectRoot
 Write-Host "Building extension..." -ForegroundColor Gray
-& pnpm --filter unified-context-broker run build
+& pnpm --filter ./apps/vscode-extension run build
 if ($LASTEXITCODE -ne 0) {
   Write-Host "[X] Build failed." -ForegroundColor Red
   exit 1

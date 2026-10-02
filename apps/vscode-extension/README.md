@@ -1,4 +1,4 @@
-# Context Broker MCP Companion for VS Code
+# Unified Context Broker - VS Code Companion
 
 Official companion extension for the **Unified Context Broker MCP Server**.
 

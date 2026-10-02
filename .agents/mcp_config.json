@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "context-broker": {
+      "command": "node",
+      "args": [
+        "C:\\Users\\Zen\\Documents\\unified-context-broker-main\\apps\\mcp-server\\dist\\index.js"
+      ]
+    }
+  }
+}

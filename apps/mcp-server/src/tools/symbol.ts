@@ -1,5 +1,4 @@
 import { ContextOrchestrator } from '@context-broker/orchestrator';
-import { CodeGraphContextAdapter } from '@context-broker/adapter-codegraphcontext';
 
 export const getSymbolContextToolDefinition = {
   name: 'get_symbol_context',
@@ -45,21 +44,8 @@ export async function handleGetSymbolContext(
     };
   }
 
-  const graphAdapter = orchestrator.getRegistry().get('codegraphcontext') as CodeGraphContextAdapter | undefined;
-  if (!graphAdapter) {
-    return {
-      isError: true,
-      content: [
-        {
-          type: 'text',
-          text: 'CodeGraphContext adapter is not registered or is currently disabled.'
-        }
-      ]
-    };
-  }
-
   try {
-    const candidates = await graphAdapter.getSymbolContext(params.symbol, params.filePath);
+    const pkg = await orchestrator.executeSymbolLookup(params.symbol, params.filePath);
     return {
       content: [
         {
@@ -67,8 +53,9 @@ export async function handleGetSymbolContext(
           text: JSON.stringify({
             symbol: params.symbol,
             filePath: params.filePath,
-            totalCandidates: candidates.length,
-            candidates
+            totalCandidates: pkg.candidates.length,
+            candidates: pkg.candidates,
+            estimatedTokens: pkg.estimatedTokens
           }, null, 2)
         }
       ]

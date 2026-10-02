@@ -33,6 +33,32 @@ export const ProviderCapabilitiesSchema = z.object({
 });
 export type ProviderCapabilities = z.infer<typeof ProviderCapabilitiesSchema>;
 
+export const DecisionInputSchema = z.object({
+  title: z.string().min(1),
+  decision: z.string().min(1),
+  rationale: z.string().min(1),
+  rejectedAlternatives: z.array(z.string()).optional().default([]),
+  affectedComponents: z.array(z.string()).optional().default([]),
+  author: z.string().optional().default('AI Agent / Architect'),
+  tags: z.array(z.string()).optional().default([]),
+  sourceFile: z.string().optional()
+});
+export type DecisionInput = z.infer<typeof DecisionInputSchema>;
+
+export const DecisionRecordSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1),
+  decision: z.string().min(1),
+  rationale: z.string().min(1),
+  rejectedAlternatives: z.array(z.string()).default([]),
+  affectedComponents: z.array(z.string()).default([]),
+  author: z.string().default('AI Agent / Architect'),
+  timestamp: z.string(),
+  tags: z.array(z.string()).default([]),
+  sourceFile: z.string().optional()
+});
+export type DecisionRecord = z.infer<typeof DecisionRecordSchema>;
+
 export interface ContextProvider {
   readonly name: z.infer<typeof SourceBackendSchema>;
   version(): Promise<ProviderVersion>;
@@ -40,4 +66,21 @@ export interface ContextProvider {
   capabilities(): Promise<ProviderCapabilities>;
   search(query: ContextQuery): Promise<ContextCandidate[]>;
   dispose?(): Promise<void>;
+}
+
+export interface SymbolProvider extends ContextProvider {
+  getSymbolContext(symbol: string, filePath?: string): Promise<ContextCandidate[]>;
+}
+
+export interface ImpactAnalysisProvider extends ContextProvider {
+  getImpactContext(symbol?: string, filePath?: string, depth?: number): Promise<ContextCandidate[]>;
+}
+
+export interface RepositoryMapProvider extends ContextProvider {
+  getRepositoryStructure(options?: { outlineOnly?: boolean }): Promise<ContextCandidate[]>;
+}
+
+export interface DurableMemoryProvider extends ContextProvider {
+  recordDecision(data: DecisionInput): Promise<DecisionRecord>;
+  recallDecisions(query: string, components?: string[], tags?: string[], limit?: number): Promise<ContextCandidate[]>;
 }

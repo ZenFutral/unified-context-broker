@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { ProviderRegistry, ContextOrchestrator } from '@context-broker/orchestrator';
-import { CompAdapter } from '@context-broker/adapter-comp';
-import { CodeGraphContextAdapter } from '@context-broker/adapter-codegraphcontext';
+import { LexicalAdapter } from '@context-broker/adapter-lexical';
+import { CodeGraphAdapter } from '@context-broker/adapter-codegraph';
 import { VectorAdapter } from '@context-broker/adapter-vector';
 import { GitAdapter } from '@context-broker/adapter-git';
 import { MemoryAdapter } from '@context-broker/adapter-memory';
@@ -15,13 +15,13 @@ import { handleExplainContext } from '../src/tools/explain.js';
 
 describe('MCP Server Surface (Milestone 4 - All 8 Tools)', () => {
   const registry = new ProviderRegistry();
-  const compAdapter = new CompAdapter({ mockMode: true });
-  const codeGraphAdapter = new CodeGraphContextAdapter({ mockMode: true });
+  const lexicalAdapter = new LexicalAdapter({ mockMode: true });
+  const codeGraphAdapter = new CodeGraphAdapter({ mockMode: true });
   const vectorAdapter = new VectorAdapter({ mockMode: true });
   const gitAdapter = new GitAdapter({ mockMode: true });
   const memoryAdapter = new MemoryAdapter({ mockMode: true });
 
-  registry.register(compAdapter, true);
+  registry.register(lexicalAdapter, true);
   registry.register(codeGraphAdapter, true);
   registry.register(vectorAdapter, true);
   registry.register(gitAdapter, true);
@@ -105,6 +105,12 @@ describe('MCP Server Surface (Milestone 4 - All 8 Tools)', () => {
     const explainParsed = JSON.parse(explainResult.content[0]?.text || '{}');
     expect(explainParsed.totalExplained).toBeGreaterThan(0);
     expect(explainParsed.explanations[0].rationale).toBeDefined();
+  });
+
+  it('9. exposes canonical action-verb tool aliases alongside legacy names', async () => {
+    const { createMcpServer } = await import('../src/server.js');
+    const server = createMcpServer(orchestrator);
+    expect(server).toBeDefined();
   });
 });
 

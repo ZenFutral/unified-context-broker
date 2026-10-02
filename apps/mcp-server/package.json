@@ -5,29 +5,33 @@
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
-    "context-broker-mcp": "./dist/index.js"
+    "context-broker-mcp": "./dist/index.js",
+    "context-search": "./dist/cli/search.js",
+    "codebase-digest": "./dist/cli/digest.js"
   },
   "scripts": {
-    "build": "tsc -b",
+    "build": "tsc -b && pnpm run bundle",
+    "bundle": "esbuild src/index.ts --bundle --platform=node --target=node20 --format=esm --outfile=dist/bundle.js",
     "start": "node ./dist/index.js",
     "clean": "rimraf dist",
     "test": "vitest run"
   },
   "dependencies": {
+    "@context-broker/adapter-codegraph": "workspace:*",
+    "@context-broker/adapter-git": "workspace:*",
+    "@context-broker/adapter-lexical": "workspace:*",
+    "@context-broker/adapter-memory": "workspace:*",
+    "@context-broker/adapter-vector": "workspace:*",
     "@context-broker/contracts": "workspace:*",
     "@context-broker/orchestrator": "workspace:*",
-    "@context-broker/adapter-comp": "workspace:*",
-    "@context-broker/adapter-codegraphcontext": "workspace:*",
-    "@context-broker/adapter-vector": "workspace:*",
-    "@context-broker/adapter-git": "workspace:*",
-    "@context-broker/adapter-memory": "workspace:*",
-    "@context-broker/ranking": "workspace:*",
     "@context-broker/provenance": "workspace:*",
+    "@context-broker/ranking": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
+    "esbuild": "^0.28.2",
     "typescript": "^5.4.0",
     "vitest": "^1.4.0"
   }

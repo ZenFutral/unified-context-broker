@@ -10,10 +10,10 @@
     { "path": "../../packages/orchestrator" },
     { "path": "../../packages/ranking" },
     { "path": "../../packages/provenance" },
-    { "path": "../../adapters/comp" },
-    { "path": "../../adapters/codegraphcontext" },
-    { "path": "../../adapters/vector" },
-    { "path": "../../adapters/git" },
-    { "path": "../../adapters/memory" }
+    { "path": "../../packages/adapter-lexical" },
+    { "path": "../../packages/adapter-codegraph" },
+    { "path": "../../packages/adapter-vector" },
+    { "path": "../../packages/adapter-git" },
+    { "path": "../../packages/adapter-memory" }
   ]
 }

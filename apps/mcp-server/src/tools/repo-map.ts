@@ -1,5 +1,4 @@
 import { ContextOrchestrator } from '@context-broker/orchestrator';
-import { CodeGraphContextAdapter } from '@context-broker/adapter-codegraphcontext';
 
 export const getRepositoryMapToolDefinition = {
   name: 'get_repository_map',
@@ -18,31 +17,24 @@ export const getRepositoryMapToolDefinition = {
 
 export async function handleGetRepositoryMap(
   orchestrator: ContextOrchestrator,
-  _args: unknown
+  args: unknown
 ) {
-  const graphAdapter = orchestrator.getRegistry().get('codegraphcontext') as CodeGraphContextAdapter | undefined;
-  if (!graphAdapter) {
-    return {
-      isError: true,
-      content: [
-        {
-          type: 'text',
-          text: 'CodeGraphContext adapter is not registered or is currently disabled.'
-        }
-      ]
-    };
-  }
+  const params = (args || {}) as { workspaceIds?: string[] };
 
   try {
-    const mapCandidates = await graphAdapter.getRepositoryMap();
+    const pkg = await orchestrator.executeRepositoryMap({
+      workspaceIds: params.workspaceIds
+    });
+
     return {
       content: [
         {
           type: 'text',
           text: JSON.stringify({
             summary: 'Repository structural map generated successfully.',
-            modulesCount: mapCandidates.length,
-            entries: mapCandidates
+            modulesCount: pkg.candidates.length,
+            entries: pkg.candidates,
+            estimatedTokens: pkg.estimatedTokens
           }, null, 2)
         }
       ]

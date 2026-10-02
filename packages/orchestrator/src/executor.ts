@@ -43,10 +43,15 @@ export class PlanExecutor {
       const entry = this.registry.getEntry(step.provider);
       const timeoutMs = entry?.timeoutMs || 2000;
 
+      let timeoutHandle: NodeJS.Timeout | undefined;
+
       try {
-        const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error(`Timed out after ${timeoutMs}ms`)), timeoutMs)
-        );
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timeoutHandle = setTimeout(
+            () => reject(new Error(`Timed out after ${timeoutMs}ms`)),
+            timeoutMs
+          );
+        });
 
         const candidates = await Promise.race([
           provider.search(query),
@@ -74,6 +79,10 @@ export class PlanExecutor {
         });
         warnings.push(`Provider '${step.provider}' degraded during ${step.operation}: ${errMsg}`);
         return [];
+      } finally {
+        if (timeoutHandle) {
+          clearTimeout(timeoutHandle);
+        }
       }
     });
 

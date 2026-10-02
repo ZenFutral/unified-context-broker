@@ -2,7 +2,17 @@ import {
   ContextQuery,
   ContextPackage,
   BrokerConfig,
-  BrokerConfigSchema
+  BrokerConfigSchema,
+  ContextCandidate,
+  SymbolProvider,
+  ImpactAnalysisProvider,
+  RepositoryMapProvider,
+  DurableMemoryProvider,
+  DecisionInput,
+  DecisionRecord,
+  ContextProvider,
+  SearchReplaceRequest,
+  SearchReplaceResult
 } from '@context-broker/contracts';
 import {
   SpatialDeduplicator,
@@ -20,6 +30,8 @@ import { QueryClassifier } from './classifier.js';
 import { RetrievalPlanner } from './planner.js';
 import { PlanExecutor } from './executor.js';
 import { TokenBudgetManager } from './budget.js';
+import { ASTOutlineExtractor } from './ast-outline.js';
+import { FileReplacementEngine } from './mutation/index.js';
 
 export class ContextOrchestrator {
   private registry: ProviderRegistry;
@@ -34,6 +46,8 @@ export class ContextOrchestrator {
   private secretScrubber: SecretScrubber;
   private permissionValidator: PermissionPolicyValidator;
   private contentHasher: ContentHasher;
+  private astOutlineExtractor: ASTOutlineExtractor;
+  private replacementEngine: FileReplacementEngine;
   private config: BrokerConfig;
 
   constructor(
@@ -54,6 +68,13 @@ export class ContextOrchestrator {
     this.secretScrubber = new SecretScrubber();
     this.permissionValidator = new PermissionPolicyValidator();
     this.contentHasher = new ContentHasher();
+    this.astOutlineExtractor = new ASTOutlineExtractor();
+    this.replacementEngine = new FileReplacementEngine({
+      boundaryGuard: this.boundaryGuard,
+      secretScrubber: this.secretScrubber,
+      astOutlineExtractor: this.astOutlineExtractor,
+      budgetManager: this.budgetManager
+    });
     this.config = BrokerConfigSchema.parse(config);
   }
 
@@ -61,32 +82,25 @@ export class ContextOrchestrator {
     return this.registry;
   }
 
-  async executeQuery(query: ContextQuery): Promise<ContextPackage> {
-    const startTime = Date.now();
+  /**
+   * Universal internal pipeline processor for Stages 4–9:
+   * Spatial Deduplication -> Workspace Boundary Jail -> Secret Scrubbing ->
+   * Permission Checks -> Knapsack Token Budgeting -> Provenance Hash Auditing -> Packaging.
+   */
+  private processCandidatesPipeline(
+    rawCandidates: ContextCandidate[],
+    query: ContextQuery,
+    startTime: number
+  ): ContextPackage {
+    const requestedBudget = query.maxTokens || query.tokenBudget || this.config.defaultTokenBudget;
+    const effectiveTokenBudget = Math.min(requestedBudget, this.config.maxTokenBudget);
 
-    // Stage 1: Normalize & Classify Query Intent
-    const queryIntent = query.intent || this.classifier.classify(query.query);
-    const effectiveTokenBudget = Math.min(
-      query.tokenBudget || this.config.defaultTokenBudget,
-      this.config.maxTokenBudget
-    );
+    // Stage 4: Spatial Deduplication & Overlap Merging
+    const deduplicated = this.deduplicator.deduplicate(rawCandidates);
 
-    // Stage 2: Retrieval Planning
-    const plan = this.planner.createPlan(queryIntent, query.query);
-
-    // Stage 3: Multi-Provider Parallel Retrieval
-    const executionResult = await this.executor.execute(plan, {
-      ...query,
-      intent: queryIntent
-    });
-
-    // Stage 4: Spatial Candidate Deduplication & Overlap Merging
-    const deduplicated = this.deduplicator.deduplicate(executionResult.rawCandidates);
-
-    // Stage 5: Security & Workspace Boundary Filtering
+    // Stage 5: Security, AST Outline Extraction & Workspace Boundary Filtering
     const sanitizedCandidates = deduplicated
       .filter((candidate) => {
-        // Enforce boundary jail on file paths if present
         if (candidate.filePath) {
           if (!this.boundaryGuard.isWithinWorkspace(candidate.filePath, query.workspaceIds)) {
             return false;
@@ -98,8 +112,11 @@ export class ContextOrchestrator {
         return true;
       })
       .map((candidate) => {
-        // Scrub secrets & API keys
-        const scrubResult = this.secretScrubber.scrub(candidate.content);
+        const contentToProcess = query.outlineOnly
+          ? this.astOutlineExtractor.extractOutline(candidate.content, candidate.filePath)
+          : candidate.content;
+
+        const scrubResult = this.secretScrubber.scrub(contentToProcess);
         const contentHash = this.contentHasher.hash(scrubResult.scrubbedContent);
 
         return {
@@ -108,7 +125,8 @@ export class ContextOrchestrator {
           contentHash,
           metadata: {
             ...candidate.metadata,
-            secretsRedacted: scrubResult.secretsDetectedCount
+            secretsRedacted: scrubResult.secretsDetectedCount,
+            outlineOnly: query.outlineOnly ?? false
           }
         };
       });
@@ -128,11 +146,12 @@ export class ContextOrchestrator {
       (c) => !seedCandidates.includes(c) && !neighborCandidates.includes(c)
     );
 
-    const expandedGraphCandidates = seedCandidates.length > 0
+    const expandedGraphCandidates = seedCandidates.length > 0 && neighborCandidates.length > 0
       ? [...this.graphExpansion.expandAndScore(seedCandidates, neighborCandidates), ...nonGraphCandidates]
       : authorizedCandidates;
 
     // Stage 7: Staged Rank Fusion & Safeguards
+    const queryIntent = query.intent || 'hybrid';
     const rankedCandidates = this.rankFusion.fuseAndRank(
       expandedGraphCandidates,
       query.query,
@@ -140,21 +159,261 @@ export class ContextOrchestrator {
     );
 
     // Stage 8: Token Budget Knapsack Packing
-    const packed = this.budgetManager.packCandidates(rankedCandidates, effectiveTokenBudget);
+    const packed = this.budgetManager.packCandidates(rankedCandidates, effectiveTokenBudget, {
+      outlineOnly: query.outlineOnly
+    });
 
     // Stage 9: Context Packaging
     return {
       queryId: query.queryId,
       queryText: query.query,
       intent: queryIntent,
-      summary: `Retrieved ${packed.packedCandidates.length} candidate(s) via ${executionResult.traces.length} provider(s) in ${Date.now() - startTime}ms`,
+      summary: `Retrieved ${packed.packedCandidates.length} candidate(s) in ${Date.now() - startTime}ms`,
       candidates: packed.packedCandidates,
       omittedCandidateCount: packed.omittedCandidateCount,
       estimatedTokens: packed.estimatedTokens,
       budgetUtilizationPct: packed.budgetUtilizationPct,
-      warnings: executionResult.warnings,
-      retrievalTrace: executionResult.traces,
+      warnings: [],
+      retrievalTrace: [],
       generatedAt: new Date().toISOString()
     };
+  }
+
+  /**
+   * Executes general context search queries.
+   */
+  async executeQuery(query: ContextQuery): Promise<ContextPackage> {
+    const startTime = Date.now();
+    const queryIntent = query.intent || this.classifier.classify(query.query);
+
+    const plan = this.planner.createPlan(queryIntent, query.query);
+    const executionResult = await this.executor.execute(plan, {
+      ...query,
+      intent: queryIntent
+    });
+
+    const contextPackage = this.processCandidatesPipeline(executionResult.rawCandidates, query, startTime);
+    contextPackage.warnings = executionResult.warnings;
+    contextPackage.retrievalTrace = executionResult.traces;
+    contextPackage.summary = `Retrieved ${contextPackage.candidates.length} candidate(s) via ${executionResult.traces.length} provider(s) in ${Date.now() - startTime}ms`;
+
+    return contextPackage;
+  }
+
+  /**
+   * Universal tool handler: `search_context`
+   */
+  async executeSearch(query: ContextQuery): Promise<ContextPackage> {
+    return this.executeQuery(query);
+  }
+
+  /**
+   * Universal tool handler: `get_symbol_context`
+   */
+  async executeSymbolLookup(
+    symbol: string,
+    filePath?: string,
+    options: Partial<ContextQuery> = {}
+  ): Promise<ContextPackage> {
+    const startTime = Date.now();
+    const query: ContextQuery = {
+      queryId: `symbol-${Date.now()}`,
+      query: symbol,
+      workspaceIds: options.workspaceIds || [process.cwd()],
+      intent: 'exact_lookup',
+      tokenBudget: options.tokenBudget || 4000,
+      resultLimit: options.resultLimit ?? 25,
+      accessScope: options.accessScope || ['workspace:read'],
+      includeHistory: false,
+      freshnessRequirement: 'either',
+      metadata: {}
+    };
+
+    let rawCandidates: ContextCandidate[] = [];
+
+    const activeProviders = this.registry.listActiveProviders();
+    const symbolProviders = activeProviders.filter(
+      (p: ContextProvider) =>
+        typeof (p as unknown as SymbolProvider).getSymbolContext === 'function' ||
+        typeof (p as any).getSymbolContext === 'function'
+    );
+
+    if (symbolProviders.length > 0) {
+      const results = await Promise.all(
+        symbolProviders.map((p: ContextProvider) => {
+          const fn = (p as unknown as SymbolProvider).getSymbolContext || (p as any).getSymbolContext;
+          return fn.call(p, symbol, filePath);
+        })
+      );
+      rawCandidates = results.flat();
+    } else {
+      return this.executeQuery(query);
+    }
+
+    return this.processCandidatesPipeline(rawCandidates, query, startTime);
+  }
+
+  /**
+   * Universal tool handler: `get_impact_context`
+   */
+  async executeImpactAnalysis(
+    symbol?: string,
+    filePath?: string,
+    depth = 2,
+    options: Partial<ContextQuery> = {}
+  ): Promise<ContextPackage> {
+    const startTime = Date.now();
+    const targetQuery = symbol || filePath || 'impact_analysis';
+
+    const query: ContextQuery = {
+      queryId: `impact-${Date.now()}`,
+      query: targetQuery,
+      workspaceIds: options.workspaceIds || [process.cwd()],
+      intent: 'impact_analysis',
+      tokenBudget: options.tokenBudget || 4000,
+      resultLimit: options.resultLimit ?? 25,
+      accessScope: options.accessScope || ['workspace:read'],
+      includeHistory: false,
+      freshnessRequirement: 'either',
+      metadata: {}
+    };
+
+    let rawCandidates: ContextCandidate[] = [];
+
+    const activeProviders = this.registry.listActiveProviders();
+    const impactProviders = activeProviders.filter(
+      (p: ContextProvider) =>
+        typeof (p as unknown as ImpactAnalysisProvider).getImpactContext === 'function' ||
+        typeof (p as any).getImpactContext === 'function'
+    );
+
+    if (impactProviders.length > 0) {
+      const results = await Promise.all(
+        impactProviders.map((p: ContextProvider) => {
+          const fn = (p as unknown as ImpactAnalysisProvider).getImpactContext || (p as any).getImpactContext;
+          return fn.call(p, symbol, filePath, depth);
+        })
+      );
+      rawCandidates = results.flat();
+    } else {
+      return this.executeQuery(query);
+    }
+
+    return this.processCandidatesPipeline(rawCandidates, query, startTime);
+  }
+
+  /**
+   * Universal tool handler: `get_repository_map`
+   */
+  async executeRepositoryMap(options: Partial<ContextQuery> = {}): Promise<ContextPackage> {
+    const startTime = Date.now();
+    const query: ContextQuery = {
+      queryId: `repomap-${Date.now()}`,
+      query: 'repository_structure_map',
+      workspaceIds: options.workspaceIds || [process.cwd()],
+      intent: 'hybrid',
+      tokenBudget: options.tokenBudget || 4000,
+      resultLimit: options.resultLimit ?? 25,
+      outlineOnly: options.outlineOnly ?? true,
+      accessScope: options.accessScope || ['workspace:read'],
+      includeHistory: false,
+      freshnessRequirement: 'either',
+      metadata: {}
+    };
+
+    let rawCandidates: ContextCandidate[] = [];
+
+    const activeProviders = this.registry.listActiveProviders();
+    const mapProviders = activeProviders.filter(
+      (p: ContextProvider) =>
+        typeof (p as unknown as RepositoryMapProvider).getRepositoryStructure === 'function' ||
+        typeof (p as any).getRepositoryMap === 'function'
+    );
+
+    if (mapProviders.length > 0) {
+      const results = await Promise.all(
+        mapProviders.map((p: ContextProvider) => {
+          const fn = (p as unknown as RepositoryMapProvider).getRepositoryStructure || (p as any).getRepositoryMap;
+          return fn.call(p, { outlineOnly: query.outlineOnly });
+        })
+      );
+      rawCandidates = results.flat();
+    } else {
+      return this.executeQuery(query);
+    }
+
+    return this.processCandidatesPipeline(rawCandidates, query, startTime);
+  }
+
+  /**
+   * Universal tool handler: `recall_decisions`
+   */
+  async executeDecisionRecall(
+    queryText: string,
+    filter?: { components?: string[]; tags?: string[] },
+    options: Partial<ContextQuery> = {}
+  ): Promise<ContextPackage> {
+    const startTime = Date.now();
+    const query: ContextQuery = {
+      queryId: `recall-${Date.now()}`,
+      query: queryText,
+      workspaceIds: options.workspaceIds || [process.cwd()],
+      intent: 'decision_recall',
+      tokenBudget: options.tokenBudget || 4000,
+      resultLimit: options.resultLimit ?? 25,
+      accessScope: options.accessScope || ['workspace:read'],
+      includeHistory: false,
+      freshnessRequirement: 'either',
+      metadata: {}
+    };
+
+    let rawCandidates: ContextCandidate[] = [];
+
+    const activeProviders = this.registry.listActiveProviders();
+    const memoryProviders = activeProviders.filter(
+      (p: ContextProvider) =>
+        typeof (p as unknown as DurableMemoryProvider).recallDecisions === 'function' ||
+        typeof (p as any).recallDecisions === 'function'
+    );
+
+    if (memoryProviders.length > 0) {
+      const results = await Promise.all(
+        memoryProviders.map((p: ContextProvider) => {
+          const fn = (p as unknown as DurableMemoryProvider).recallDecisions || (p as any).recallDecisions;
+          return fn.call(p, queryText, filter?.components, filter?.tags, options.resultLimit ?? 10);
+        })
+      );
+      rawCandidates = results.flat();
+    } else {
+      return this.executeQuery(query);
+    }
+
+    return this.processCandidatesPipeline(rawCandidates, query, startTime);
+  }
+
+  /**
+   * Universal tool handler: `record_decision`
+   */
+  async executeDecisionRecord(decision: DecisionInput): Promise<DecisionRecord> {
+    const activeProviders = this.registry.listActiveProviders();
+    const memoryProviders = activeProviders.filter(
+      (p: ContextProvider) =>
+        typeof (p as unknown as DurableMemoryProvider).recordDecision === 'function' ||
+        typeof (p as any).recordDecision === 'function'
+    );
+
+    if (memoryProviders.length > 0) {
+      const provider = memoryProviders[0]!;
+      const fn = (provider as unknown as DurableMemoryProvider).recordDecision || (provider as any).recordDecision;
+      return fn.call(provider, decision);
+    }
+    throw new Error('No DurableMemoryProvider available to record architectural decision.');
+  }
+
+  /**
+   * Universal tool handler: `search_and_replace`
+   */
+  async executeSearchReplace(request: SearchReplaceRequest): Promise<SearchReplaceResult> {
+    return this.replacementEngine.replace(request);
   }
 }

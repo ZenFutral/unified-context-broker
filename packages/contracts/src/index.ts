@@ -5,3 +5,5 @@ export * from './package.js';
 export * from './config.js';
 export * from './errors.js';
 export * from './telemetry.js';
+export * from './mutation.js';
+export * from './templates/rule.js';

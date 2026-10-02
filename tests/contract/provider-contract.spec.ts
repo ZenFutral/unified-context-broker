@@ -1,16 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { CompAdapter } from '../../adapters/comp/src/index.js';
-import { CodeGraphContextAdapter } from '../../adapters/codegraphcontext/src/index.js';
-import { VectorAdapter } from '../../adapters/vector/src/index.js';
-import { GitAdapter } from '../../adapters/git/src/index.js';
-import { MemoryAdapter } from '../../adapters/memory/src/index.js';
+import { LexicalAdapter } from '@context-broker/adapter-lexical';
+import { CodeGraphAdapter } from '@context-broker/adapter-codegraph';
+import { VectorAdapter } from '@context-broker/adapter-vector';
+import { GitAdapter } from '@context-broker/adapter-git';
+import { MemoryAdapter } from '@context-broker/adapter-memory';
 import {
   ContextProvider,
   ContextCandidateSchema,
   ProviderCapabilitiesSchema,
   HealthResultSchema,
   ProviderVersionSchema
-} from '../../packages/contracts/src/index.js';
+} from '@context-broker/contracts';
 
 /**
  * Universal Contract Test Suite that EVERY adapter must pass.
@@ -68,11 +68,11 @@ function runProviderContractTests(providerFactory: () => ContextProvider) {
   });
 }
 
-// 1. comP adapter
-runProviderContractTests(() => new CompAdapter({ mockMode: true }));
+// 1. Lexical adapter
+runProviderContractTests(() => new LexicalAdapter({ mockMode: true }));
 
-// 2. CodeGraphContext adapter
-runProviderContractTests(() => new CodeGraphContextAdapter({ mockMode: true }));
+// 2. CodeGraph adapter
+runProviderContractTests(() => new CodeGraphAdapter({ mockMode: true }));
 
 // 3. Vector adapter
 runProviderContractTests(() => new VectorAdapter({ mockMode: true }));

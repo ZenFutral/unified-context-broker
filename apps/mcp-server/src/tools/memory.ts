@@ -1,8 +1,5 @@
 import { z } from 'zod';
 import { ContextOrchestrator } from '@context-broker/orchestrator';
-import { MemoryAdapter } from '@context-broker/adapter-memory';
-
-// ----- Argument schemas -----
 
 const RecordDecisionArgsSchema = z.object({
   title: z.string().min(1),
@@ -106,21 +103,8 @@ export async function handleRecordDecision(
 
   const params = parsed.data;
 
-  const memoryAdapter = orchestrator.getRegistry().get('memory') as MemoryAdapter | undefined;
-  if (!memoryAdapter) {
-    return {
-      isError: true,
-      content: [
-        {
-          type: 'text',
-          text: 'Memory adapter is not registered or is currently disabled.'
-        }
-      ]
-    };
-  }
-
   try {
-    const record = await memoryAdapter.recordDecision({
+    const record = await orchestrator.executeDecisionRecord({
       title: params.title,
       decision: params.decision,
       rationale: params.rationale,
@@ -173,25 +157,14 @@ export async function handleRecallDecisions(
 
   const params = parsed.data;
 
-  const memoryAdapter = orchestrator.getRegistry().get('memory') as MemoryAdapter | undefined;
-  if (!memoryAdapter) {
-    return {
-      isError: true,
-      content: [
-        {
-          type: 'text',
-          text: 'Memory adapter is not registered or is currently disabled.'
-        }
-      ]
-    };
-  }
-
   try {
-    const candidates = await memoryAdapter.recallDecisions(
+    const pkg = await orchestrator.executeDecisionRecall(
       params.query,
-      params.components,
-      params.tags,
-      params.limit
+      {
+        components: params.components,
+        tags: params.tags
+      },
+      { resultLimit: params.limit }
     );
 
     return {
@@ -200,8 +173,9 @@ export async function handleRecallDecisions(
           type: 'text',
           text: JSON.stringify({
             query: params.query,
-            totalRetrieved: candidates.length,
-            decisions: candidates
+            totalRetrieved: pkg.candidates.length,
+            decisions: pkg.candidates,
+            estimatedTokens: pkg.estimatedTokens
           }, null, 2)
         }
       ]

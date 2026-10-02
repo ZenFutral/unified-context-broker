@@ -9,6 +9,10 @@
     { "path": "../../packages/contracts" },
     { "path": "../../packages/ranking" },
     { "path": "../../packages/security" },
-    { "path": "../../packages/provenance" }
+    { "path": "../../packages/provenance" },
+    { "path": "../adapter-codegraph" },
+    { "path": "../adapter-lexical" },
+    { "path": "../adapter-git" },
+    { "path": "../adapter-memory" }
   ]
 }

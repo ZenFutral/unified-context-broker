@@ -13,8 +13,8 @@
   "dependencies": {
     "@context-broker/contracts": "workspace:*",
     "@context-broker/orchestrator": "workspace:*",
-    "@context-broker/adapter-comp": "workspace:*",
-    "@context-broker/adapter-codegraphcontext": "workspace:*",
+    "@context-broker/adapter-lexical": "workspace:*",
+    "@context-broker/adapter-codegraph": "workspace:*",
     "@context-broker/adapter-vector": "workspace:*",
     "@context-broker/adapter-git": "workspace:*",
     "@context-broker/adapter-memory": "workspace:*"

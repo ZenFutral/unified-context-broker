@@ -1,16 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { ProviderRegistry, ContextOrchestrator } from '../../packages/orchestrator/src/index.js';
-import { CompAdapter } from '../../adapters/comp/src/index.js';
-import { CodeGraphContextAdapter } from '../../adapters/codegraphcontext/src/index.js';
-import { VectorAdapter } from '../../adapters/vector/src/index.js';
-import { GitAdapter } from '../../adapters/git/src/index.js';
-import { MemoryAdapter } from '../../adapters/memory/src/index.js';
+import { ProviderRegistry, ContextOrchestrator } from '@context-broker/orchestrator';
+import { LexicalAdapter } from '@context-broker/adapter-lexical';
+import { CodeGraphAdapter } from '@context-broker/adapter-codegraph';
+import { VectorAdapter } from '@context-broker/adapter-vector';
+import { GitAdapter } from '@context-broker/adapter-git';
+import { MemoryAdapter } from '@context-broker/adapter-memory';
 import benchmarkCases from './goldens/benchmark-cases.json';
 
 describe('Retrieval Evaluation Swarm (Benchmark Harness)', () => {
   const registry = new ProviderRegistry();
-  registry.register(new CompAdapter({ mockMode: true }), true);
-  registry.register(new CodeGraphContextAdapter({ mockMode: true }), true);
+  registry.register(new LexicalAdapter({ mockMode: true }), true);
+  registry.register(new CodeGraphAdapter({ mockMode: true }), true);
   registry.register(new VectorAdapter({ mockMode: true }), true);
   registry.register(new GitAdapter({ mockMode: true }), true);
   registry.register(new MemoryAdapter({ mockMode: true }), true);

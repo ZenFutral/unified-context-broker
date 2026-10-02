@@ -23,7 +23,7 @@ export class RankFusionEngine {
   }
 
   /**
-   * Applies multi-signal rank fusion to candidates.
+   * Applies multi-signal rank fusion to a flat list of candidates.
    */
   fuseAndRank(
     candidates: ContextCandidate[],
@@ -99,7 +99,65 @@ export class RankFusionEngine {
   }
 
   /**
-   * Reciprocal Rank Fusion (RRF) implementation: RRF(d) = sum( 1 / (k + rank) )
+   * Performs true Multi-List Reciprocal Rank Fusion (RRF) across distinct candidate streams
+   * from disparate search adapters: RRF(d) = sum_m ( w_m / (k + rank_m(d)) )
+   */
+  fuseMultiList(
+    providerLists: Map<string, ContextCandidate[]>,
+    queryText: string,
+    intent: QueryIntent
+  ): ContextCandidate[] {
+    const candidateMap = new Map<string, ContextCandidate>();
+    const rrfScores = new Map<string, number>();
+
+    for (const [backend, list] of providerLists.entries()) {
+      if (!list || list.length === 0) continue;
+
+      let listWeight = 1.0;
+      if (backend === 'comp') listWeight = this.weights.lexicalWeight;
+      else if (backend === 'vector') listWeight = this.weights.semanticWeight;
+      else if (backend === 'codegraphcontext') listWeight = this.weights.graphWeight;
+      else if (backend === 'git') listWeight = this.weights.recencyWeight;
+
+      list.forEach((candidate, rankIndex) => {
+        const id = candidate.id;
+        if (!candidateMap.has(id)) {
+          candidateMap.set(id, { ...candidate });
+        } else {
+          // Merge metadata & scores from alternative stream
+          const existing = candidateMap.get(id)!;
+          candidateMap.set(id, {
+            ...existing,
+            lexicalScore: candidate.lexicalScore ?? existing.lexicalScore,
+            semanticScore: candidate.semanticScore ?? existing.semanticScore,
+            graphRelevance: candidate.graphRelevance ?? existing.graphRelevance,
+            graphDistance: candidate.graphDistance ?? existing.graphDistance
+          });
+        }
+
+        const rank = rankIndex + 1;
+        const rrfIncrement = (listWeight * 10) / (this.rrfK + rank);
+        rrfScores.set(id, (rrfScores.get(id) ?? 0) + rrfIncrement);
+      });
+    }
+
+    const mergedCandidates = Array.from(candidateMap.values());
+
+    // Fuse and add RRF scores to linear weighted scores
+    const fused = this.fuseAndRank(mergedCandidates, queryText, intent);
+
+    return fused.map((c) => {
+      const rrf = rrfScores.get(c.id) ?? 0;
+      const combinedScore = (c.compositeScore ?? 0) + rrf;
+      return {
+        ...c,
+        compositeScore: Number(combinedScore.toFixed(4))
+      };
+    }).sort((a, b) => (b.compositeScore ?? 0) - (a.compositeScore ?? 0));
+  }
+
+  /**
+   * Reciprocal Rank Fusion (RRF) single-list fallback implementation.
    */
   private applyRRF(candidates: ContextCandidate[]): ContextCandidate[] {
     return candidates.map((candidate, index) => {

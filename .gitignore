@@ -30,6 +30,7 @@ yarn-error.log*
 
 # Local databases & Runtime Telemetry
 .context-broker/
+.data/
 *.db
 *.db-journal
 *.sqlite
@@ -39,5 +40,7 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
-# Agent Instructions
-.agents/
+# Agent Instructions & Configurations
+.agents/*
+!.agents/rules/
+!.agents/mcp_config.json

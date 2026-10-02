@@ -9,7 +9,7 @@ if (-not (Get-Command pnpm -ErrorAction SilentlyContinue)) {
 }
 
 Set-Location $ProjectRoot
-& pnpm --filter context-broker-vscode build
+& pnpm --filter ./apps/vscode-extension build
 if ($LASTEXITCODE -ne 0) {
   exit $LASTEXITCODE
 }
@@ -17,8 +17,8 @@ if ($LASTEXITCODE -ne 0) {
 # Automatically deploy to AntiGravity IDE and VS Code active extensions folders
 $ExtSrc   = Join-Path $ProjectRoot "apps\vscode-extension"
 $DestDirs = @(
-  (Join-Path $env:USERPROFILE ".antigravity-ide\extensions\context-broker-vscode-0.1.0"),
-  (Join-Path $env:USERPROFILE ".vscode\extensions\context-broker-vscode-0.1.0")
+  (Join-Path $env:USERPROFILE ".antigravity-ide\extensions\unified-context-broker-0.1.0"),
+  (Join-Path $env:USERPROFILE ".vscode\extensions\unified-context-broker-0.1.0")
 )
 
 foreach ($ExtDest in $DestDirs) {

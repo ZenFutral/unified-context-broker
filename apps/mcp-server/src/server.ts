@@ -35,10 +35,50 @@ import {
   handleExplainContext
 } from './tools/explain.js';
 import {
+  searchAndReplaceToolDefinition,
+  handleSearchAndReplace
+} from './tools/replace.js';
+import {
   emitToolExecutionEvent,
   calculateTokenMetrics,
   formatArgsSummary
 } from './telemetryEmitter.js';
+
+export const lookupSymbolToolDefinition = {
+  ...getSymbolContextToolDefinition,
+  name: 'lookup_symbol',
+  description: 'Alias for get_symbol_context. Retrieve detailed signature, AST outline, callers, and references for a specific code symbol.'
+};
+
+export const analyzeImpactToolDefinition = {
+  ...getImpactContextToolDefinition,
+  name: 'analyze_impact',
+  description: 'Alias for get_impact_context. Perform blast radius analysis for a proposed change to a symbol or file.'
+};
+
+export const getRepoMapToolDefinition = {
+  ...getRepositoryMapToolDefinition,
+  name: 'get_repo_map',
+  description: 'Alias for get_repository_map. Generate high-level directory outline and module centrality topology digest.'
+};
+
+export const checkHealthToolDefinition = {
+  ...backendHealthToolDefinition,
+  name: 'check_health',
+  description: 'Alias for backend_health. Run quick diagnostic and report health status of all registered context providers.'
+};
+
+export const replaceInFileToolDefinition = {
+  ...searchAndReplaceToolDefinition,
+  name: 'replace_in_file',
+  description: 'Alias for search_and_replace. Safely execute atomic file replacements.'
+};
+
+export const patchFileToolDefinition = {
+  ...searchAndReplaceToolDefinition,
+  name: 'patch_file',
+  description: 'Alias for search_and_replace. Apply structured patch chunks to a file.'
+};
 
 export function createMcpServer(orchestrator: ContextOrchestrator): Server {
   const server = new Server(
@@ -53,18 +93,25 @@ export function createMcpServer(orchestrator: ContextOrchestrator): Server {
     }
   );
 
-  // Expose the 8 unified MCP tools
+  // Expose the unified MCP tools plus canonical action-verb aliases
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
       tools: [
         searchContextToolDefinition,
         getSymbolContextToolDefinition,
+        lookupSymbolToolDefinition,
         getImpactContextToolDefinition,
+        analyzeImpactToolDefinition,
         getRepositoryMapToolDefinition,
+        getRepoMapToolDefinition,
         recallDecisionsToolDefinition,
         recordDecisionToolDefinition,
         explainContextToolDefinition,
-        backendHealthToolDefinition
+        backendHealthToolDefinition,
+        checkHealthToolDefinition,
+        searchAndReplaceToolDefinition,
+        replaceInFileToolDefinition,
+        patchFileToolDefinition
       ]
     };
   });
@@ -78,6 +125,7 @@ export function createMcpServer(orchestrator: ContextOrchestrator): Server {
 
     try {
       switch (name) {
+        case 'check_health':
         case 'backend_health':
           result = await handleBackendHealth(orchestrator);
           break;
@@ -86,14 +134,17 @@ export function createMcpServer(orchestrator: ContextOrchestrator): Server {
           result = await handleSearchContext(orchestrator, args);
           break;
 
+        case 'lookup_symbol':
         case 'get_symbol_context':
           result = await handleGetSymbolContext(orchestrator, args);
           break;
 
+        case 'analyze_impact':
         case 'get_impact_context':
           result = await handleGetImpactContext(orchestrator, args);
           break;
 
+        case 'get_repo_map':
         case 'get_repository_map':
           result = await handleGetRepositoryMap(orchestrator, args);
           break;
@@ -108,6 +159,12 @@ export function createMcpServer(orchestrator: ContextOrchestrator): Server {
 
         case 'explain_context':
           result = await handleExplainContext(orchestrator, args);
+          break;
+
+        case 'search_and_replace':
+        case 'replace_in_file':
+        case 'patch_file':
+          result = await handleSearchAndReplace(orchestrator, args);
           break;
 
         default:
@@ -147,6 +204,15 @@ export function createMcpServer(orchestrator: ContextOrchestrator): Server {
       const metrics = calculateTokenMetrics(name, safeArgs, result);
       const argsSummary = formatArgsSummary(name, safeArgs);
 
+      let responsePayload: unknown = result;
+      try {
+        if (result?.content?.[0]?.text) {
+          responsePayload = JSON.parse(result.content[0].text);
+        }
+      } catch {
+        responsePayload = result;
+      }
+
       emitToolExecutionEvent({
         id: `mcp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         tool: name,
@@ -155,7 +221,13 @@ export function createMcpServer(orchestrator: ContextOrchestrator): Server {
         tokensSaved: metrics.tokensSaved,
         timestamp: new Date().toISOString(),
         status,
-        details: metrics.details
+        requestPayload: safeArgs ?? {},
+        responsePayload,
+        details: {
+          ...metrics.details,
+          requestPayload: safeArgs ?? {},
+          responsePayload
+        }
       }).catch(() => {});
     }
   });

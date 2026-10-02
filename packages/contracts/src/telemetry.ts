@@ -8,6 +8,8 @@ export const ToolExecutionEventSchema = z.object({
   tokensSaved: z.number().int().nonnegative(),
   timestamp: z.string(),
   status: z.enum(['success', 'error']),
+  requestPayload: z.unknown().optional(),
+  responsePayload: z.unknown().optional(),
   details: z.record(z.unknown()).optional()
 });
 

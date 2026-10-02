@@ -23,6 +23,8 @@ export const ContextQuerySchema = z.object({
   repositoryIds: z.array(z.string()).optional(),
   intent: QueryIntentSchema.optional().default('hybrid'),
   tokenBudget: z.number().int().positive().default(4000),
+  maxTokens: z.number().int().positive().optional(),
+  outlineOnly: z.boolean().optional(),
   resultLimit: z.number().int().positive().optional().default(25),
   accessScope: z.array(z.string()).default(['workspace:read']),
   includeHistory: z.boolean().optional().default(false),

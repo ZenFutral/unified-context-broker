@@ -1,8 +1,7 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
-import os from 'node:os';
-import type { ToolExecutionEvent } from '@context-broker/contracts';
+import { ToolExecutionEvent, getBrokerRoot } from '@context-broker/contracts';
 
 function parseToolExecutionEvent(
   raw: unknown
@@ -70,31 +69,19 @@ export class TelemetryBridge {
       dirs.push(process.env['CONTEXT_BROKER_TELEMETRY_DIR']);
     }
 
-    for (const folder of workspaceFolders) {
-      if (folder) dirs.push(path.join(folder, '.context-broker'));
-    }
-
     try {
-      dirs.push(path.resolve(__dirname, '../../.context-broker'));
-      dirs.push(path.resolve(__dirname, '../../../.context-broker'));
-      dirs.push(path.resolve(__dirname, '../../../../.context-broker'));
+      const brokerRoot = getBrokerRoot();
+      dirs.push(path.join(brokerRoot, '.data', 'telemetry'));
+      dirs.push(path.join(brokerRoot, '.data'));
     } catch {
       // ignore
     }
 
-    dirs.push(path.join(process.cwd(), '.context-broker'));
-
-    // Check parent directories if running from subpackage
-    let curr = process.cwd();
-    for (let i = 0; i < 3; i++) {
-      const parent = path.dirname(curr);
-      if (parent === curr) break;
-      dirs.push(path.join(parent, '.context-broker'));
-      curr = parent;
+    for (const folder of workspaceFolders) {
+      if (folder) {
+        dirs.push(path.join(folder, 'unified-context-broker', '.data', 'telemetry'));
+      }
     }
-
-    dirs.push(path.join(os.homedir(), '.context-broker'));
-    dirs.push(path.join(os.tmpdir(), '.context-broker'));
 
     const unique = new Set<string>();
     const res: string[] = [];
@@ -196,21 +183,30 @@ export class TelemetryBridge {
   }
 
   private startFileWatcher() {
+    let brokerRoot = '';
+    try {
+      brokerRoot = getBrokerRoot();
+    } catch {
+      // ignore
+    }
+
     for (const dir of this.candidateDirs) {
       try {
         if (!fs.existsSync(dir)) {
-          fs.mkdirSync(dir, { recursive: true });
+          continue;
         }
 
         const latestFile = path.join(dir, 'latest.json');
-        if (!fs.existsSync(latestFile)) {
+        if (!fs.existsSync(latestFile) && brokerRoot && path.normalize(latestFile).startsWith(path.normalize(brokerRoot))) {
           fs.writeFileSync(latestFile, '{}', 'utf8');
         }
 
-        fs.watchFile(latestFile, { interval: 250 }, () => {
-          this.readLatestFileFrom(latestFile);
-        });
-        this.watchedFiles.push(latestFile);
+        if (fs.existsSync(latestFile)) {
+          fs.watchFile(latestFile, { interval: 250 }, () => {
+            this.readLatestFileFrom(latestFile);
+          });
+          this.watchedFiles.push(latestFile);
+        }
       } catch {
         // Continue if directory unwritable
       }

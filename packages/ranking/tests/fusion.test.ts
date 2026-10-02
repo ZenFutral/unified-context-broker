@@ -69,4 +69,39 @@ describe('RankFusionEngine', () => {
     expect(ranked[0]?.id).toBe('hit-live');
     expect(ranked[0]?.compositeScore).toBeGreaterThan(ranked[1]?.compositeScore ?? 0);
   });
+
+  it('performs multi-list RRF fusion across distinct provider streams', () => {
+    const lexicalCandidate: ContextCandidate = {
+      id: 'doc-1',
+      sourceBackend: 'comp',
+      sourceType: 'code',
+      filePath: 'src/index.ts',
+      content: 'function main() {}',
+      lexicalScore: 0.9,
+      freshness: 'live',
+      permissions: ['workspace:read'],
+      metadata: {}
+    };
+
+    const semanticCandidate: ContextCandidate = {
+      id: 'doc-2',
+      sourceBackend: 'vector',
+      sourceType: 'code',
+      filePath: 'src/server.ts',
+      content: 'function startServer() {}',
+      semanticScore: 0.85,
+      freshness: 'live',
+      permissions: ['workspace:read'],
+      metadata: {}
+    };
+
+    const providerMap = new Map<string, ContextCandidate[]>([
+      ['comp', [lexicalCandidate]],
+      ['vector', [semanticCandidate]]
+    ]);
+
+    const fused = fusion.fuseMultiList(providerMap, 'main server', 'hybrid');
+    expect(fused.length).toBe(2);
+    expect(fused[0]?.compositeScore).toBeGreaterThan(0);
+  });
 });

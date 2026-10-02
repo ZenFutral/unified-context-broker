@@ -23,7 +23,8 @@
     },
     "memory": {
       "enabled": true,
-      "timeoutMs": 1500
+      "timeoutMs": 1500,
+      "dbPath": ".data/memory/decisions.jsonl"
     }
   },
   "scoring": {
