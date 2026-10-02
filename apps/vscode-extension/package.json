@@ -1,7 +1,7 @@
 {
   "name": "unified-context-broker",
-  "displayName": "Unified Context Broker MCP Companion",
-  "description": "VS Code client extension for the Unified Context Broker MCP Server",
+  "displayName": "Unified Context Broker VSCode Companion",
+  "description": "VS Code client extension for Unified Context Broker",
   "version": "0.2.0",
   "publisher": "unified-context-broker",
   "license": "MIT",

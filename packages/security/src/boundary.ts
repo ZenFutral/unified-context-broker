@@ -57,22 +57,25 @@ export class WorkspaceBoundaryGuard {
     if (workspaceIds.length === 0) return true;
     if (targetFilePath.includes('\0')) return false;
 
+    const normalizedTarget = targetFilePath.replace(/\\/g, '/');
+
     for (const ws of workspaceIds) {
-      const normWs = resolve(ws).replace(/\\/g, '/').toLowerCase();
+      const normalizedWs = ws.replace(/\\/g, '/');
+      const normWs = resolve(normalizedWs).replace(/\\/g, '/').toLowerCase();
       const wsPrefix = normWs.endsWith('/') ? normWs : normWs + '/';
 
-      const directResolved = resolve(targetFilePath).replace(/\\/g, '/').toLowerCase();
-      const relativeResolved = resolve(ws, targetFilePath).replace(/\\/g, '/').toLowerCase();
+      const directResolved = resolve(normalizedTarget).replace(/\\/g, '/').toLowerCase();
+      const relativeResolved = resolve(normWs, normalizedTarget).replace(/\\/g, '/').toLowerCase();
 
       const isDirectInside = directResolved === normWs || directResolved.startsWith(wsPrefix);
       const isRelativeInside = relativeResolved === normWs || relativeResolved.startsWith(wsPrefix);
 
       if (isDirectInside || isRelativeInside) {
         // Symlink verification if file exists on disk
-        if (fs.existsSync(targetFilePath)) {
+        if (fs.existsSync(normalizedTarget)) {
           try {
-            const realTarget = fs.realpathSync(targetFilePath).replace(/\\/g, '/').toLowerCase();
-            const realWs = fs.existsSync(ws) ? fs.realpathSync(ws).replace(/\\/g, '/').toLowerCase() : normWs;
+            const realTarget = fs.realpathSync(normalizedTarget).replace(/\\/g, '/').toLowerCase();
+            const realWs = fs.existsSync(normalizedWs) ? fs.realpathSync(normalizedWs).replace(/\\/g, '/').toLowerCase() : normWs;
             const realWsPrefix = realWs.endsWith('/') ? realWs : realWs + '/';
 
             if (realTarget !== realWs && !realTarget.startsWith(realWsPrefix)) {
